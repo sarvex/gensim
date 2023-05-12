@@ -57,4 +57,4 @@ if __name__ == "__main__":
     if args.info:
         print("Gensim installation information\n")
         for (k, v) in sorted(package_info().items()):
-            print("{}: {}".format(k, v))
+            print(f"{k}: {v}")

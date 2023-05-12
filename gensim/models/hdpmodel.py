@@ -89,7 +89,7 @@ def expect_log_sticks(sticks):
 
     n = len(sticks[0]) + 1
     Elogsticks = np.zeros(n)
-    Elogsticks[0: n - 1] = ElogW
+    Elogsticks[:n - 1] = ElogW
     Elogsticks[1:] = Elogsticks[1:] + np.cumsum(Elog1_W)
     return Elogsticks
 
@@ -536,7 +536,7 @@ class HdpModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
 
         """
         # Find the unique words in this chunk...
-        unique_words = dict()
+        unique_words = {}
         word_list = []
         for doc in chunk:
             for word_id, _ in doc:
@@ -550,8 +550,8 @@ class HdpModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         rw = np.array([self.m_r[t] for t in self.m_timestamp[word_list]])
         self.m_lambda[:, word_list] *= np.exp(self.m_r[-1] - rw)
         self.m_Elogbeta[:, word_list] = \
-            psi(self.m_eta + self.m_lambda[:, word_list]) - \
-            psi(self.m_W * self.m_eta + self.m_lambda_sum[:, np.newaxis])
+                psi(self.m_eta + self.m_lambda[:, word_list]) - \
+                psi(self.m_W * self.m_eta + self.m_lambda_sum[:, np.newaxis])
 
         ss = SuffStats(self.m_T, wt, len(chunk))
 
@@ -625,23 +625,17 @@ class HdpModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
             # var_phi
             if iter < 3:
                 var_phi = np.dot(phi.T, (Elogbeta_doc * doc_word_counts).T)
-                (log_var_phi, log_norm) = matutils.ret_log_normalize_vec(var_phi)
-                var_phi = np.exp(log_var_phi)
             else:
                 var_phi = np.dot(phi.T, (Elogbeta_doc * doc_word_counts).T) + Elogsticks_1st
-                (log_var_phi, log_norm) = matutils.ret_log_normalize_vec(var_phi)
-                var_phi = np.exp(log_var_phi)
-
+            (log_var_phi, log_norm) = matutils.ret_log_normalize_vec(var_phi)
+            var_phi = np.exp(log_var_phi)
             # phi
             if iter < 3:
                 phi = np.dot(var_phi, Elogbeta_doc).T
-                (log_phi, log_norm) = matutils.ret_log_normalize_vec(phi)
-                phi = np.exp(log_phi)
             else:
                 phi = np.dot(var_phi, Elogbeta_doc).T + Elogsticks_2nd  # noqa:F821
-                (log_phi, log_norm) = matutils.ret_log_normalize_vec(phi)
-                phi = np.exp(log_phi)
-
+            (log_phi, log_norm) = matutils.ret_log_normalize_vec(phi)
+            phi = np.exp(log_phi)
             # v
             phi_all = phi * np.array(doc_word_counts)[:, np.newaxis]
             v[0] = 1.0 + np.sum(phi_all[:, :self.m_K - 1], 0)
@@ -699,22 +693,21 @@ class HdpModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         # rhot will be between 0 and 1, and says how much to weight
         # the information we got from this mini-chunk.
         rhot = self.m_scale * pow(self.m_tau + self.m_updatect, -self.m_kappa)
-        if rhot < rhot_bound:
-            rhot = rhot_bound
+        rhot = max(rhot, rhot_bound)
         self.m_rhot = rhot
 
         # Update appropriate columns of lambda based on documents.
         self.m_lambda[:, word_list] = \
-            self.m_lambda[:, word_list] * (1 - rhot) + rhot * self.m_D * sstats.m_var_beta_ss / sstats.m_chunksize
+                self.m_lambda[:, word_list] * (1 - rhot) + rhot * self.m_D * sstats.m_var_beta_ss / sstats.m_chunksize
         self.m_lambda_sum = (1 - rhot) * self.m_lambda_sum + \
-            rhot * self.m_D * np.sum(sstats.m_var_beta_ss, axis=1) / sstats.m_chunksize
+                rhot * self.m_D * np.sum(sstats.m_var_beta_ss, axis=1) / sstats.m_chunksize
 
         self.m_updatect += 1
         self.m_timestamp[word_list] = self.m_updatect
         self.m_r.append(self.m_r[-1] + np.log(1 - rhot))
 
         self.m_varphi_ss = \
-            (1.0 - rhot) * self.m_varphi_ss + rhot * sstats.m_var_sticks_ss * self.m_D / sstats.m_chunksize
+                (1.0 - rhot) * self.m_varphi_ss + rhot * sstats.m_var_sticks_ss * self.m_D / sstats.m_chunksize
 
         if opt_o:
             self.optimal_ordering()
@@ -839,11 +832,8 @@ class HdpModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         if not self.outputdir:
             logger.error("cannot store topics without having specified an output directory")
 
-        if doc_count is None:
-            fname = 'final'
-        else:
-            fname = 'doc-%i' % doc_count
-        fname = '%s/%s.topics' % (self.outputdir, fname)
+        fname = 'final' if doc_count is None else 'doc-%i' % doc_count
+        fname = f'{self.outputdir}/{fname}.topics'
         logger.info("saving topics to %s", fname)
         betas = self.m_lambda + self.m_eta
         np.savetxt(fname, betas)
@@ -860,7 +850,7 @@ class HdpModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         if not self.outputdir:
             logger.error("cannot store options without having specified an output directory")
             return
-        fname = '%s/options.dat' % self.outputdir
+        fname = f'{self.outputdir}/options.dat'
         with utils.open(fname, 'wb') as fout:
             fout.write('tau: %s\n' % str(self.m_tau - 1))
             fout.write('chunksize: %s\n' % str(self.chunksize))
@@ -984,7 +974,7 @@ class HdpTopicFormatter:
         if topic_data is not None:
             topics = topic_data
         elif topic_file is not None:
-            topics = np.loadtxt('%s' % topic_file)
+            topics = np.loadtxt(f'{topic_file}')
         else:
             raise ValueError('no topic data!')
 
@@ -1186,5 +1176,4 @@ class HdpTopicFormatter:
         else:
             fmt = '\n'.join('    %20s    %.8f' % (word, weight) for (word, weight) in topic_terms)
 
-        fmt = (topic_id, fmt)
-        return fmt
+        return topic_id, fmt

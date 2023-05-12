@@ -676,8 +676,6 @@ class Word2Vec(utils.SaveLoad):
                     if self.wv.has_index_for(word):
                         pre_exist_words.append(word)
                         pre_exist_total += v
-                        if not dry_run:
-                            pass
                     else:
                         new_words.append(word)
                         new_total += v
@@ -1188,7 +1186,7 @@ class Word2Vec(utils.SaveLoad):
         next_alpha = self._get_next_alpha(0.0, cur_epoch)
         job_no = 0
 
-        for data_idx, data in enumerate(data_iterator):
+        for data in data_iterator:
             data_length = self._raw_word_count([data])
 
             # can we fit this sentence into the existing job batch?
@@ -1874,9 +1872,7 @@ class Word2Vec(utils.SaveLoad):
             and learning rate.
 
         """
-        return "%s(vocab=%s, vector_size=%s, alpha=%s)" % (
-            self.__class__.__name__, len(self.wv.index_to_key), self.wv.vector_size, self.alpha,
-        )
+        return f"{self.__class__.__name__}(vocab={len(self.wv.index_to_key)}, vector_size={self.wv.vector_size}, alpha={self.alpha})"
 
     def save(self, *args, **kwargs):
         """Save the model.
@@ -1922,7 +1918,9 @@ class Word2Vec(utils.SaveLoad):
             model = super(Word2Vec, cls).load(*args, **kwargs)
             if not isinstance(model, Word2Vec):
                 rethrow = True
-                raise AttributeError("Model of type %s can't be loaded by %s" % (type(model), str(cls)))
+                raise AttributeError(
+                    f"Model of type {type(model)} can't be loaded by {str(cls)}"
+                )
             return model
         except AttributeError as ae:
             if rethrow:
@@ -2002,11 +2000,12 @@ class BrownCorpus:
                     # each file line is a single sentence in the Brown corpus
                     # each token is WORD/POS_TAG
                     token_tags = [t.split('/') for t in line.split() if len(t.split('/')) == 2]
-                    # ignore words with non-alphabetic tags like ",", "!" etc (punctuation, weird stuff)
-                    words = ["%s/%s" % (token.lower(), tag[:2]) for token, tag in token_tags if tag[:2].isalpha()]
-                    if not words:  # don't bother sending out empty sentences
-                        continue
-                    yield words
+                    if words := [
+                        f"{token.lower()}/{tag[:2]}"
+                        for token, tag in token_tags
+                        if tag[:2].isalpha()
+                    ]:
+                        yield words
 
 
 class Text8Corpus:
@@ -2156,7 +2155,10 @@ class Heapitem(namedtuple('Heapitem', 'count, index, left, right')):
 
 
 def _build_heap(wv):
-    heap = list(Heapitem(wv.get_vecattr(i, 'count'), i, None, None) for i in range(len(wv.index_to_key)))
+    heap = [
+        Heapitem(wv.get_vecattr(i, 'count'), i, None, None)
+        for i in range(len(wv.index_to_key))
+    ]
     heapq.heapify(heap)
     for i in range(len(wv) - 1):
         min1, min2 = heapq.heappop(heap), heapq.heappop(heap)
@@ -2269,11 +2271,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.cbow == 0:
-        skipgram = 1
-    else:
-        skipgram = 0
-
+    skipgram = 1 if args.cbow == 0 else 0
     corpus = LineSentence(args.train)
 
     model = Word2Vec(
@@ -2287,11 +2285,11 @@ if __name__ == "__main__":
         model.wv.save_word2vec_format(outfile, binary=args.binary)
     else:
         outfile = args.train
-        model.save(outfile + '.model')
+        model.save(f'{outfile}.model')
     if args.binary == 1:
-        model.wv.save_word2vec_format(outfile + '.model.bin', binary=True)
+        model.wv.save_word2vec_format(f'{outfile}.model.bin', binary=True)
     else:
-        model.wv.save_word2vec_format(outfile + '.model.txt', binary=False)
+        model.wv.save_word2vec_format(f'{outfile}.model.txt', binary=False)
 
     if args.accuracy:
         model.accuracy(args.accuracy)

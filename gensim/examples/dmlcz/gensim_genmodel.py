@@ -12,6 +12,7 @@ Example: ./gensim_genmodel.py any lsi
 """
 
 
+
 import logging
 import sys
 import os.path
@@ -43,8 +44,11 @@ if __name__ == '__main__':
     method = sys.argv[2].strip().lower()
 
     logging.info("loading corpus mappings")
-    config = dmlcorpus.DmlConfig('%s_%s' % (gensim_build.PREFIX, language),
-                                 resultDir=gensim_build.RESULT_DIR, acceptLangs=[language])
+    config = dmlcorpus.DmlConfig(
+        f'{gensim_build.PREFIX}_{language}',
+        resultDir=gensim_build.RESULT_DIR,
+        acceptLangs=[language],
+    )
 
     logging.info("loading word id mapping from %s", config.resultFile('wordids.txt'))
     id2word = dmlcorpus.DmlCorpus.loadDictionary(config.resultFile('wordids.txt'))
@@ -71,8 +75,8 @@ if __name__ == '__main__':
         model = rpmodel.RpModel(tfidf[corpus], id2word=id2word, num_topics=DIM_RP)
         model.save(config.resultFile('model_rp.pkl'))
     else:
-        raise ValueError('unknown topic extraction method: %s' % repr(method))
+        raise ValueError(f'unknown topic extraction method: {repr(method)}')
 
-    MmCorpus.saveCorpus(config.resultFile('%s.mm' % method), model[corpus])
+    MmCorpus.saveCorpus(config.resultFile(f'{method}.mm'), model[corpus])
 
     logging.info("finished running %s", program)

@@ -281,7 +281,7 @@ print(counter)
 #
 # This is great and not entirely surprising. We can take a look at an example:
 #
-print('Document ({}): «{}»\n'.format(doc_id, ' '.join(train_corpus[doc_id].words)))
+print(f"Document ({doc_id}): «{' '.join(train_corpus[doc_id].words)}»\n")
 print(u'SIMILAR/DISSIMILAR DOCS PER MODEL %s:\n' % model)
 for label, index in [('MOST', 0), ('SECOND-MOST', 1), ('MEDIAN', len(sims)//2), ('LEAST', len(sims) - 1)]:
     print(u'%s %s: «%s»\n' % (label, sims[index], ' '.join(train_corpus[sims[index][0]].words)))
@@ -302,9 +302,11 @@ import random
 doc_id = random.randint(0, len(train_corpus) - 1)
 
 # Compare and print the second-most-similar document
-print('Train Document ({}): «{}»\n'.format(doc_id, ' '.join(train_corpus[doc_id].words)))
+print(f"Train Document ({doc_id}): «{' '.join(train_corpus[doc_id].words)}»\n")
 sim_id = second_ranks[doc_id]
-print('Similar Document {}: «{}»\n'.format(sim_id, ' '.join(train_corpus[sim_id[0]].words)))
+print(
+    f"Similar Document {sim_id}: «{' '.join(train_corpus[sim_id[0]].words)}»\n"
+)
 
 ###############################################################################
 # Testing the Model
@@ -320,7 +322,7 @@ inferred_vector = model.infer_vector(test_corpus[doc_id])
 sims = model.dv.most_similar([inferred_vector], topn=len(model.dv))
 
 # Compare and print the most/median/least similar documents from the train corpus
-print('Test Document ({}): «{}»\n'.format(doc_id, ' '.join(test_corpus[doc_id])))
+print(f"Test Document ({doc_id}): «{' '.join(test_corpus[doc_id])}»\n")
 print(u'SIMILAR/DISSIMILAR DOCS PER MODEL %s:\n' % model)
 for label, index in [('MOST', 0), ('MEDIAN', len(sims)//2), ('LEAST', len(sims) - 1)]:
     print(u'%s %s: «%s»\n' % (label, sims[index], ' '.join(train_corpus[sims[index][0]].words)))

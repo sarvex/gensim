@@ -463,12 +463,18 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
 
         self.alpha, self.optimize_alpha = self.init_dir_prior(alpha, 'alpha')
         assert self.alpha.shape == (self.num_topics,), \
-            "Invalid alpha shape. Got shape %s, but expected (%d, )" % (str(self.alpha.shape), self.num_topics)
+                "Invalid alpha shape. Got shape %s, but expected (%d, )" % (str(self.alpha.shape), self.num_topics)
 
         self.eta, self.optimize_eta = self.init_dir_prior(eta, 'eta')
-        assert self.eta.shape == (self.num_terms,) or self.eta.shape == (self.num_topics, self.num_terms), (
-            "Invalid eta shape. Got shape %s, but expected (%d, 1) or (%d, %d)" %
-            (str(self.eta.shape), self.num_terms, self.num_topics, self.num_terms))
+        assert self.eta.shape in [
+            (self.num_terms,),
+            (self.num_topics, self.num_terms),
+        ], "Invalid eta shape. Got shape %s, but expected (%d, 1) or (%d, %d)" % (
+            str(self.eta.shape),
+            self.num_terms,
+            self.num_topics,
+            self.num_terms,
+        )
 
         self.random_state = utils.get_random_state(random_state)
 
@@ -493,7 +499,7 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
                 with utils.getNS(**ns_conf) as ns:
                     from gensim.models.lda_dispatcher import LDA_DISPATCHER_PREFIX
                     self.dispatcher = Pyro4.Proxy(ns.list(prefix=LDA_DISPATCHER_PREFIX)[LDA_DISPATCHER_PREFIX])
-                    logger.debug("looking for dispatcher at %s" % str(self.dispatcher._pyroUri))
+                    logger.debug(f"looking for dispatcher at {str(self.dispatcher._pyroUri)}")
                     self.dispatcher.initialize(
                         id2word=self.id2word, num_topics=self.num_topics, chunksize=chunksize,
                         alpha=alpha, eta=eta, distributed=False
@@ -502,7 +508,7 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
                     logger.info("using distributed version with %i workers", self.numworkers)
             except Exception as err:
                 logger.error("failed to initialize distributed LDA (%s)", err)
-                raise RuntimeError("failed to initialize distributed LDA (%s)" % err)
+                raise RuntimeError(f"failed to initialize distributed LDA ({err})")
 
         # Initialize the variational distribution q(beta|lambda)
         self.state = LdaState(self.eta, (self.num_topics, self.num_terms), dtype=self.dtype)
@@ -575,8 +581,9 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
             if prior == 'symmetric':
                 logger.info("using symmetric %s at %s", name, 1.0 / self.num_topics)
                 init_prior = np.fromiter(
-                    (1.0 / self.num_topics for i in range(prior_shape)),
-                    dtype=self.dtype, count=prior_shape,
+                    (1.0 / self.num_topics for _ in range(prior_shape)),
+                    dtype=self.dtype,
+                    count=prior_shape,
                 )
             elif prior == 'asymmetric':
                 if name == 'eta':
@@ -589,20 +596,25 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
                 logger.info("using asymmetric %s %s", name, list(init_prior))
             elif prior == 'auto':
                 is_auto = True
-                init_prior = np.fromiter((1.0 / self.num_topics for i in range(prior_shape)),
-                    dtype=self.dtype, count=prior_shape)
+                init_prior = np.fromiter(
+                    (1.0 / self.num_topics for _ in range(prior_shape)),
+                    dtype=self.dtype,
+                    count=prior_shape,
+                )
                 if name == 'alpha':
                     logger.info("using autotuned %s, starting with %s", name, list(init_prior))
             else:
-                raise ValueError("Unable to determine proper %s value given '%s'" % (name, prior))
+                raise ValueError(f"Unable to determine proper {name} value given '{prior}'")
         elif isinstance(prior, list):
             init_prior = np.asarray(prior, dtype=self.dtype)
         elif isinstance(prior, np.ndarray):
             init_prior = prior.astype(self.dtype, copy=False)
         elif isinstance(prior, (np.number, numbers.Real)):
-            init_prior = np.fromiter((prior for i in range(prior_shape)), dtype=self.dtype)
+            init_prior = np.fromiter((prior for _ in range(prior_shape)), dtype=self.dtype)
         else:
-            raise ValueError("%s must be either a np array of scalars, list of scalars, or scalar" % name)
+            raise ValueError(
+                f"{name} must be either a np array of scalars, list of scalars, or scalar"
+            )
 
         return init_prior, is_auto
 
@@ -615,9 +627,7 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
             Human readable representation of the most important model parameters.
 
         """
-        return "LdaModel(num_terms=%s, num_topics=%s, decay=%s, chunksize=%s)" % (
-            self.num_terms, self.num_topics, self.decay, self.chunksize
-        )
+        return f"LdaModel(num_terms={self.num_terms}, num_topics={self.num_topics}, decay={self.decay}, chunksize={self.chunksize})"
 
     def sync_state(self, current_Elogbeta=None):
         """Propagate the states topic probabilities to the inner object's attribute.
@@ -933,10 +943,7 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
 
         if update_every:
             updatetype = "online"
-            if passes == 1:
-                updatetype += " (single-pass)"
-            else:
-                updatetype += " (multi-pass)"
+            updatetype += " (single-pass)" if passes == 1 else " (multi-pass)"
             updateafter = min(lencorpus, update_every * self.numworkers * chunksize)
         else:
             updatetype = "batch"
@@ -1408,12 +1415,11 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         if isinstance(word_id, str):
             word_id = self.id2word.doc2bow([word_id])[0][0]
 
-        values = []
-        for topic_id in range(0, self.num_topics):
-            if self.expElogbeta[topic_id][word_id] >= minimum_probability:
-                values.append((topic_id, self.expElogbeta[topic_id][word_id]))
-
-        return values
+        return [
+            (topic_id, self.expElogbeta[topic_id][word_id])
+            for topic_id in range(0, self.num_topics)
+            if self.expElogbeta[topic_id][word_id] >= minimum_probability
+        ]
 
     def diff(self, other, distance="kullback_leibler", num_words=100,
              n_ann_terms=10, diagonal=False, annotation=True, normed=True):
@@ -1469,11 +1475,11 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         }
 
         if distance not in distances:
-            valid_keys = ", ".join("`{}`".format(x) for x in distances.keys())
-            raise ValueError("Incorrect distance, valid only {}".format(valid_keys))
+            valid_keys = ", ".join(f"`{x}`" for x in distances)
+            raise ValueError(f"Incorrect distance, valid only {valid_keys}")
 
         if not isinstance(other, self.__class__):
-            raise ValueError("The parameter `other` must be of type `{}`".format(self.__name__))
+            raise ValueError(f"The parameter `other` must be of type `{self.__name__}`")
 
         distance_func = distances[distance]
         d1, d2 = self.get_topics(), other.get_topics()
@@ -1488,8 +1494,8 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
 
         if diagonal:
             assert t1_size == t2_size, \
-                "Both input models should have same no. of topics, " \
-                "as the diagonal will only be valid in a square matrix"
+                    "Both input models should have same no. of topics, " \
+                    "as the diagonal will only be valid in a square matrix"
             # initialize z and annotation array
             z = np.zeros(t1_size)
             if annotation:
@@ -1503,11 +1509,7 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
         # iterate over each cell in the initialized z and annotation
         for topic in np.ndindex(z.shape):
             topic1 = topic[0]
-            if diagonal:
-                topic2 = topic1
-            else:
-                topic2 = topic[1]
-
+            topic2 = topic1 if diagonal else topic[1]
             z[topic] = distance_func(d1[topic1], d2[topic2])
             if annotation:
                 pos_tokens = fst_topics[topic1] & snd_topics[topic2]
@@ -1518,9 +1520,8 @@ class LdaModel(interfaces.TransformationABC, basemodel.BaseTopicModel):
 
                 annotation_terms[topic] = [pos_tokens, neg_tokens]
 
-        if normed:
-            if np.abs(np.max(z)) > 1e-8:
-                z /= np.max(z)
+        if normed and np.abs(np.max(z)) > 1e-8:
+            z /= np.max(z)
 
         return z, annotation_terms
 

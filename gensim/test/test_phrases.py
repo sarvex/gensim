@@ -29,9 +29,7 @@ class TestPhraseAnalysis(unittest.TestCase):
         def score_candidate(self, word_a, word_b, in_between):
             phrase = "_".join([word_a] + in_between + [word_b])
             score = self.scores.get(phrase, -1)
-            if score > self.threshold:
-                return phrase, score
-            return None, None
+            return (phrase, score) if score > self.threshold else (None, None)
 
     def test_simple_analysis(self):
         """Test transformation with no phrases."""
@@ -102,7 +100,7 @@ class PhrasesData:
     bigram3 = u'human_interface'
 
     def gen_sentences(self):
-        return ((w for w in sentence) for sentence in self.sentences)
+        return (iter(sentence) for sentence in self.sentences)
 
 
 class PhrasesCommon(PhrasesData):
@@ -133,7 +131,9 @@ class PhrasesCommon(PhrasesData):
         # Iterator of empty list -> list of empty list
         self.assertEqual(list(self.bigram_default[iter([[], []])]), [[], []])
         # Iterator of empty iterator -> list of empty list
-        self.assertEqual(list(self.bigram_default[(iter(()) for i in range(2))]), [[], []])
+        self.assertEqual(
+            list(self.bigram_default[(iter(()) for _ in range(2))]), [[], []]
+        )
 
     def test_sentence_generation(self):
         """Test basic bigram using a dummy corpus."""
@@ -219,28 +219,21 @@ class TestPhrasesModel(PhrasesCommon, unittest.TestCase):
         seen_bigrams = set(bigram.export_phrases().keys())
         seen_trigrams = set(trigram.export_phrases().keys())
 
-        assert seen_bigrams == set([
+        assert seen_bigrams == {
             'human interface',
             'response time',
             'graph minors',
             'minors survey',
-        ])
+        }
 
-        assert seen_trigrams == set([
-            'human interface',
-            'graph minors survey',
-        ])
+        assert seen_trigrams == {'human interface', 'graph minors survey'}
 
     def test_find_phrases(self):
         """Test Phrases bigram find phrases."""
         bigram = Phrases(self.sentences, min_count=1, threshold=1, delimiter=' ')
         seen_bigrams = set(bigram.find_phrases(self.sentences).keys())
 
-        assert seen_bigrams == set([
-            'response time',
-            'graph minors',
-            'human interface',
-        ])
+        assert seen_bigrams == {'response time', 'graph minors', 'human interface'}
 
     def test_multiple_bigrams_single_entry(self):
         """Test a single entry produces multiple bigrams."""
@@ -254,7 +247,10 @@ class TestPhrasesModel(PhrasesCommon, unittest.TestCase):
         """Test the default scoring, from the mikolov word2vec paper."""
         bigram = Phrases(self.sentences, min_count=1, threshold=1, delimiter=' ')
         test_sentences = [['graph', 'minors', 'survey', 'human', 'interface']]
-        seen_scores = set(round(score, 3) for score in bigram.find_phrases(test_sentences).values())
+        seen_scores = {
+            round(score, 3)
+            for score in bigram.find_phrases(test_sentences).values()
+        }
 
         assert seen_scores == {
             5.167,  # score for graph minors
@@ -273,7 +269,10 @@ class TestPhrasesModel(PhrasesCommon, unittest.TestCase):
         """Test normalized pointwise mutual information scoring."""
         bigram = Phrases(self.sentences, min_count=1, threshold=.5, scoring='npmi')
         test_sentences = [['graph', 'minors', 'survey', 'human', 'interface']]
-        seen_scores = set(round(score, 3) for score in bigram.find_phrases(test_sentences).values())
+        seen_scores = {
+            round(score, 3)
+            for score in bigram.find_phrases(test_sentences).values()
+        }
 
         assert seen_scores == {
             .882,  # score for graph minors
@@ -326,11 +325,11 @@ class TestPhrasesPersistence(PhrasesData, unittest.TestCase):
             bigram_loaded = Phrases.load(fpath)
 
         test_sentences = [['graph', 'minors', 'survey', 'human', 'interface', 'system']]
-        seen_scores = set(round(score, 3) for score in bigram_loaded.find_phrases(test_sentences).values())
-        assert seen_scores == set([
-            5.167,  # score for graph minors
-            3.444  # score for human interface
-        ])
+        seen_scores = {
+            round(score, 3)
+            for score in bigram_loaded.find_phrases(test_sentences).values()
+        }
+        assert seen_scores == {5.167, 3.444}
 
     def test_save_load_with_connector_words(self):
         """Test saving and loading a Phrases object."""
@@ -346,23 +345,23 @@ class TestPhrasesPersistence(PhrasesData, unittest.TestCase):
         """Test backwards compatibility with a previous version of Phrases with custom scoring."""
         bigram_loaded = Phrases.load(datapath("phrases-scoring-str.pkl"))
         test_sentences = [['graph', 'minors', 'survey', 'human', 'interface', 'system']]
-        seen_scores = set(round(score, 3) for score in bigram_loaded.find_phrases(test_sentences).values())
+        seen_scores = {
+            round(score, 3)
+            for score in bigram_loaded.find_phrases(test_sentences).values()
+        }
 
-        assert seen_scores == set([
-            5.167,  # score for graph minors
-            3.444  # score for human interface
-        ])
+        assert seen_scores == {5.167, 3.444}
 
     def test_save_load_no_scoring(self):
         """Test backwards compatibility with old versions of Phrases with no scoring parameter."""
         bigram_loaded = Phrases.load(datapath("phrases-no-scoring.pkl"))
         test_sentences = [['graph', 'minors', 'survey', 'human', 'interface', 'system']]
-        seen_scores = set(round(score, 3) for score in bigram_loaded.find_phrases(test_sentences).values())
+        seen_scores = {
+            round(score, 3)
+            for score in bigram_loaded.find_phrases(test_sentences).values()
+        }
 
-        assert seen_scores == set([
-            5.167,  # score for graph minors
-            3.444  # score for human interface
-        ])
+        assert seen_scores == {5.167, 3.444}
 
     def test_save_load_no_common_terms(self):
         """Ensure backwards compatibility with old versions of Phrases, before connector_words."""
@@ -462,7 +461,7 @@ class CommonTermsPhrasesData:
     expression3 = u'human interface'
 
     def gen_sentences(self):
-        return ((w for w in sentence) for sentence in self.sentences)
+        return (iter(sentence) for sentence in self.sentences)
 
 
 class TestPhrasesModelCommonTerms(CommonTermsPhrasesData, TestPhrasesModel):
@@ -474,28 +473,25 @@ class TestPhrasesModelCommonTerms(CommonTermsPhrasesData, TestPhrasesModel):
         test_sentences = [['data', 'and', 'graph', 'survey', 'for', 'human', 'interface']]
         seen_bigrams = set(bigram.find_phrases(test_sentences).keys())
 
-        assert seen_bigrams == set([
-            'data and graph',
-            'human interface',
-        ])
+        assert seen_bigrams == {'data and graph', 'human interface'}
 
     def test_find_phrases(self):
         """Test Phrases bigram export phrases."""
         bigram = Phrases(self.sentences, min_count=1, threshold=1, connector_words=self.connector_words, delimiter=' ')
         seen_bigrams = set(bigram.find_phrases(self.sentences).keys())
 
-        assert seen_bigrams == set([
+        assert seen_bigrams == {
             'human interface',
             'graph of trees',
             'data and graph',
             'lack of interest',
-        ])
+        }
 
     def test_export_phrases(self):
         """Test Phrases bigram export phrases."""
         bigram = Phrases(self.sentences, min_count=1, threshold=1, delimiter=' ')
         seen_bigrams = set(bigram.export_phrases().keys())
-        assert seen_bigrams == set([
+        assert seen_bigrams == {
             'and graph',
             'data and',
             'graph of',
@@ -504,13 +500,16 @@ class TestPhrasesModelCommonTerms(CommonTermsPhrasesData, TestPhrasesModel):
             'lack of',
             'of interest',
             'of trees',
-        ])
+        }
 
     def test_scoring_default(self):
         """ test the default scoring, from the mikolov word2vec paper """
         bigram = Phrases(self.sentences, min_count=1, threshold=1, connector_words=self.connector_words)
         test_sentences = [['data', 'and', 'graph', 'survey', 'for', 'human', 'interface']]
-        seen_scores = set(round(score, 3) for score in bigram.find_phrases(test_sentences).values())
+        seen_scores = {
+            round(score, 3)
+            for score in bigram.find_phrases(test_sentences).values()
+        }
 
         min_count = float(bigram.min_count)
         len_vocab = float(len(bigram.vocab))
@@ -521,12 +520,12 @@ class TestPhrasesModelCommonTerms(CommonTermsPhrasesData, TestPhrasesModel):
         interface = float(bigram.vocab["interface"])
         human_interface = float(bigram.vocab["human_interface"])
 
-        assert seen_scores == set([
-            # score for data and graph
+        assert seen_scores == {
             round((data_and_graph - min_count) / data / graph * len_vocab, 3),
-            # score for human interface
-            round((human_interface - min_count) / human / interface * len_vocab, 3),
-        ])
+            round(
+                (human_interface - min_count) / human / interface * len_vocab, 3
+            ),
+        }
 
     def test_scoring_npmi(self):
         """Test normalized pointwise mutual information scoring."""
@@ -535,12 +534,12 @@ class TestPhrasesModelCommonTerms(CommonTermsPhrasesData, TestPhrasesModel):
             scoring='npmi', connector_words=self.connector_words,
         )
         test_sentences = [['data', 'and', 'graph', 'survey', 'for', 'human', 'interface']]
-        seen_scores = set(round(score, 3) for score in bigram.find_phrases(test_sentences).values())
+        seen_scores = {
+            round(score, 3)
+            for score in bigram.find_phrases(test_sentences).values()
+        }
 
-        assert seen_scores == set([
-            .74,  # score for data and graph
-            .894  # score for human interface
-        ])
+        assert seen_scores == {.74, .894}
 
     def test_custom_scorer(self):
         """Test using a custom scoring function."""

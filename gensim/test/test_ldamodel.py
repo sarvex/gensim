@@ -349,7 +349,7 @@ class TestLdaModel(unittest.TestCase, basetmtests.TestBaseTopicModel):
         # long message includes the original error message with a custom one
         self.longMessage = True
         # construct what we expect when passes aren't involved
-        test_rhots = list()
+        test_rhots = []
         model = self.class_(id2word=dictionary, chunksize=1, num_topics=2)
 
         def final_rhot(model):

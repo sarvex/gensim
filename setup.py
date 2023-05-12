@@ -46,7 +46,7 @@ def need_cython():
 
     """
     expected = list(c_extensions.values()) + list(cpp_extensions.values())
-    return any([not os.path.isfile(f) for f in expected])
+    return any(not os.path.isfile(f) for f in expected)
 
 
 def make_c_ext(use_cython=False):
@@ -135,7 +135,7 @@ class CleanExt(distutils.cmd.Command):
                 if os.path.splitext(f)[1] in ('.c', '.cpp', '.so')
             ]
             for f in files:
-                self.announce('removing %s' % f, level=distutils.log.INFO)
+                self.announce(f'removing {f}', level=distutils.log.INFO)
                 os.unlink(f)
 
         if os.path.isdir('build'):
@@ -148,7 +148,7 @@ cmdclass = {'build_ext': CustomBuildExt, 'clean_ext': CleanExt}
 WHEELHOUSE_UPLOADER_COMMANDS = {'fetch_artifacts', 'upload_all'}
 if WHEELHOUSE_UPLOADER_COMMANDS.intersection(sys.argv):
     import wheelhouse_uploader.cmd
-    cmdclass.update(vars(wheelhouse_uploader.cmd))
+    cmdclass |= vars(wheelhouse_uploader.cmd)
 
 
 LONG_DESCRIPTION = u"""

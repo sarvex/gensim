@@ -236,13 +236,13 @@ import psutil
 model.save('/tmp/mymodel.pkl')
 
 def f(process_id):
-    print('Process Id: {}'.format(os.getpid()))
+    print(f'Process Id: {os.getpid()}')
     process = psutil.Process(os.getpid())
     new_model = Word2Vec.load('/tmp/mymodel.pkl')
     vector = new_model.wv["science"]
     annoy_index = AnnoyIndexer(new_model, 100)
     approximate_neighbors = new_model.wv.most_similar([vector], topn=5, indexer=annoy_index)
-    print('\nMemory used by process {}: {}\n---'.format(os.getpid(), process.memory_info()))
+    print(f'\nMemory used by process {os.getpid()}: {process.memory_info()}\n---')
 
 # Create and run two parallel processes to share the same index file.
 p1 = Process(target=f, args=('1',))
@@ -260,7 +260,7 @@ p2.join()
 model.save('/tmp/mymodel.pkl')
 
 def f(process_id):
-    print('Process Id: {}'.format(os.getpid()))
+    print(f'Process Id: {os.getpid()}')
     process = psutil.Process(os.getpid())
     new_model = Word2Vec.load('/tmp/mymodel.pkl')
     vector = new_model.wv["science"]
@@ -268,7 +268,7 @@ def f(process_id):
     annoy_index.load('/tmp/mymodel.index')
     annoy_index.model = new_model
     approximate_neighbors = new_model.wv.most_similar([vector], topn=5, indexer=annoy_index)
-    print('\nMemory used by process {}: {}\n---'.format(os.getpid(), process.memory_info()))
+    print(f'\nMemory used by process {os.getpid()}: {process.memory_info()}\n---')
 
 # Creating and running two parallel process to share the same index file.
 p1 = Process(target=f, args=('1',))
@@ -347,7 +347,7 @@ from smart_open import open
 # The first line has the total number of entries and the vector dimension count.
 # The next lines have a key (a string) followed by its vector.
 with open('/tmp/vectors.txt', encoding='utf8') as myfile:
-    for i in range(3):
+    for _ in range(3):
         print(myfile.readline().strip())
 
 # To import a word2vec text model

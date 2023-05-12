@@ -43,10 +43,7 @@ new_sentences = [
 
 
 def _rule(word, count, min_count):
-    if word == "human":
-        return utils.RULE_DISCARD  # throw out
-    else:
-        return utils.RULE_DEFAULT  # apply default rule, i.e. min_count
+    return utils.RULE_DISCARD if word == "human" else utils.RULE_DEFAULT
 
 
 def load_on_instance():
@@ -75,7 +72,7 @@ class TestWord2VecModel(unittest.TestCase):
         model_neg.build_vocab_from_freq(freq_dict)
         self.assertEqual(len(model_hs.wv), 12)
         self.assertEqual(len(model_neg.wv), 12)
-        for k in freq_dict_orig.keys():
+        for k in freq_dict_orig:
             self.assertEqual(model_hs.wv.get_vecattr(k, 'count'), freq_dict_orig[k])
             self.assertEqual(model_neg.wv.get_vecattr(k, 'count'), freq_dict_orig[k])
 
@@ -327,13 +324,13 @@ class TestWord2VecModel(unittest.TestCase):
             model_file_suffix = '_py3'
 
         # Model stored in one file
-        model_file = 'word2vec_pre_kv%s' % model_file_suffix
+        model_file = f'word2vec_pre_kv{model_file_suffix}'
         model = word2vec.Word2Vec.load(datapath(model_file))
         self.assertTrue(model.wv.vectors.shape == (len(model.wv), model.vector_size))
         self.assertTrue(model.syn1neg.shape == (len(model.wv), model.vector_size))
 
         # Model stored in multiple files
-        model_file = 'word2vec_pre_kv_sep%s' % model_file_suffix
+        model_file = f'word2vec_pre_kv_sep{model_file_suffix}'
         model = word2vec.Word2Vec.load(datapath(model_file))
         self.assertTrue(model.wv.vectors.shape == (len(model.wv), model.vector_size))
         self.assertTrue(model.syn1neg.shape == (len(model.wv), model.vector_size))
@@ -374,18 +371,16 @@ class TestWord2VecModel(unittest.TestCase):
         tfile = get_tmpfile('gensim_word2vec.tst')
         model = word2vec.Word2Vec(sentences, min_count=1)
         model.wv.save_word2vec_format(tfile, binary=True)
-        f = open(tfile, 'r+b')
-        f.write(b'13')  # write wrong (too-long) vector count
-        f.close()
+        with open(tfile, 'r+b') as f:
+            f.write(b'13')  # write wrong (too-long) vector count
         self.assertRaises(EOFError, keyedvectors.KeyedVectors.load_word2vec_format, tfile, binary=True)
 
     def test_too_short_text_word2vec_format(self):
         tfile = get_tmpfile('gensim_word2vec.tst')
         model = word2vec.Word2Vec(sentences, min_count=1)
         model.wv.save_word2vec_format(tfile, binary=False)
-        f = open(tfile, 'r+b')
-        f.write(b'13')  # write wrong (too-long) vector count
-        f.close()
+        with open(tfile, 'r+b') as f:
+            f.write(b'13')  # write wrong (too-long) vector count
         self.assertRaises(EOFError, keyedvectors.KeyedVectors.load_word2vec_format, tfile, binary=False)
 
     def test_persistence_word2vec_format_non_binary(self):
@@ -646,11 +641,11 @@ class TestWord2VecModel(unittest.TestCase):
         reps = int(os.environ['BULK_TEST_REPS'])
         method_name = os.environ.get('METHOD_NAME', 'test_cbow_hs')  # by default test that specially-troublesome one
         method_fn = getattr(self, method_name)
-        for i in range(reps):
+        for _ in range(reps):
             try:
                 method_fn(ranks=ranks)
             except Exception as ex:
-                print('%s failed: %s' % (method_name, ex))
+                print(f'{method_name} failed: {ex}')
                 failures += 1
         print(ranks)
         print(np.mean(ranks))
@@ -991,7 +986,7 @@ class TestWord2VecModel(unittest.TestCase):
         """
         Is sentences a generator object?
         """
-        gen = (s for s in sentences)
+        gen = iter(sentences)
         self.assertRaises(TypeError, word2vec.Word2Vec, (gen,))
 
     def test_load_on_class_error(self):
@@ -1087,10 +1082,8 @@ class TestWord2VecSentenceIterators(unittest.TestCase):
             with utils.open(os.path.join(datapath('PathLineSentences'), '2.txt.bz2'), 'rb') as orig2:
                 sentences = word2vec.PathLineSentences(datapath('PathLineSentences'))
                 orig = orig1.readlines() + orig2.readlines()
-                orig_counter = 0  # to go through orig while matching PathLineSentences
-                for words in sentences:
+                for orig_counter, words in enumerate(sentences):
                     self.assertEqual(words, utils.to_unicode(orig[orig_counter]).split())
-                    orig_counter += 1
 
     def test_path_line_sentences_one_file(self):
         """Does PathLineSentences work with a single file argument?"""
@@ -1117,7 +1110,7 @@ class TestWord2VecSentenceIterators(unittest.TestCase):
 if not hasattr(TestWord2VecModel, 'assertLess'):
     # workaround for python 2.6
     def assertLess(self, a, b, msg=None):
-        self.assertTrue(a < b, msg="%s is not less than %s" % (a, b))
+        self.assertTrue(a < b, msg=f"{a} is not less than {b}")
 
     setattr(TestWord2VecModel, 'assertLess', assertLess)
 

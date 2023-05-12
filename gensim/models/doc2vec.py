@@ -130,7 +130,7 @@ class TaggedDocument(namedtuple('TaggedDocument', 'words tags')):
            Human readable representation of the object's state (words and tags).
 
         """
-        return '%s(%s, %s)' % (self.__class__.__name__, self.words, self.tags)
+        return f'{self.__class__.__name__}({self.words}, {self.tags})'
 
 
 @dataclass
@@ -627,7 +627,7 @@ class Doc2Vec(Word2Vec):
 
         alpha_delta = (alpha - min_alpha) / max(epochs - 1, 1)
 
-        for i in range(epochs):
+        for _ in range(epochs):
             if self.sg:
                 train_document_dbow(
                     self, doc_words, doctag_indexes, alpha, work,
@@ -662,9 +662,7 @@ class Doc2Vec(Word2Vec):
 
         """
         if isinstance(tag, (str, int, integer,)):
-            if tag not in self.wv:
-                return self.dv[tag]
-            return self.wv[tag]
+            return self.dv[tag] if tag not in self.wv else self.wv[tag]
         return vstack([self[i] for i in tag])
 
     def __str__(self):
@@ -678,27 +676,25 @@ class Doc2Vec(Word2Vec):
         """
         segments = []
         if self.comment:
-            segments.append('"%s"' % self.comment)
+            segments.append(f'"{self.comment}"')
         if self.sg:
             if self.dbow_words:
                 segments.append('dbow+w')  # also training words
             else:
                 segments.append('dbow')  # PV-DBOW (skip-gram-style)
 
-        else:  # PV-DM...
-            if self.dm_concat:
-                segments.append('dm/c')  # ...with concatenative context layer
-            else:
-                if self.cbow_mean:
-                    segments.append('dm/m')
-                else:
-                    segments.append('dm/s')
+        elif self.dm_concat:
+            segments.append('dm/c')  # ...with concatenative context layer
+        elif self.cbow_mean:
+            segments.append('dm/m')
+        else:
+            segments.append('dm/s')
         segments.append('d%d' % self.dv.vector_size)  # dimensions
         if self.negative:
             segments.append('n%d' % self.negative)  # negative samples
         if self.hs:
             segments.append('hs')
-        if not self.sg or (self.sg and self.dbow_words):
+        if not self.sg or self.dbow_words:
             segments.append('w%d' % self.window)  # window size, when relevant
         if self.min_count > 1:
             segments.append('mc%d' % self.min_count)
@@ -706,7 +702,7 @@ class Doc2Vec(Word2Vec):
             segments.append('s%g' % self.sample)
         if self.workers > 1:
             segments.append('t%d' % self.workers)
-        return '%s(%s)' % (self.__class__.__name__, ','.join(segments))
+        return f"{self.__class__.__name__}({','.join(segments)})"
 
     def save_word2vec_format(self, fname, doctag_vec=False, word_vec=True, prefix='*dt_', fvocab=None, binary=False):
         """Store the input-hidden weight matrix in the same format used by the original C word2vec-tool.
@@ -963,13 +959,12 @@ class Doc2Vec(Word2Vec):
                 # Note a document tag during initial corpus scan, for structure sizing.
                 if isinstance(tag, (int, integer,)):
                     max_rawint = max(max_rawint, tag)
+                elif tag in doctags_lookup:
+                    doctags_lookup[tag].doc_count += 1
+                    doctags_lookup[tag].word_count += document_length
                 else:
-                    if tag in doctags_lookup:
-                        doctags_lookup[tag].doc_count += 1
-                        doctags_lookup[tag].word_count += document_length
-                    else:
-                        doctags_lookup[tag] = Doctag(index=len(doctags_list), word_count=document_length, doc_count=1)
-                        doctags_list.append(tag)
+                    doctags_lookup[tag] = Doctag(index=len(doctags_list), word_count=document_length, doc_count=1)
+                    doctags_list.append(tag)
 
             for word in document.words:
                 vocab[word] += 1
@@ -1115,11 +1110,12 @@ class TaggedBrownCorpus:
                     # each file line is a single document in the Brown corpus
                     # each token is WORD/POS_TAG
                     token_tags = [t.split('/') for t in line.split() if len(t.split('/')) == 2]
-                    # ignore words with non-alphabetic tags like ",", "!" etc (punctuation, weird stuff)
-                    words = ["%s/%s" % (token.lower(), tag[:2]) for token, tag in token_tags if tag[:2].isalpha()]
-                    if not words:  # don't bother sending out empty documents
-                        continue
-                    yield TaggedDocument(words, ['%s_SENT_%s' % (fname, item_no)])
+                    if words := [
+                        f"{token.lower()}/{tag[:2]}"
+                        for token, tag in token_tags
+                        if tag[:2].isalpha()
+                    ]:
+                        yield TaggedDocument(words, [f'{fname}_SENT_{item_no}'])
 
 
 class TaggedLineDocument:

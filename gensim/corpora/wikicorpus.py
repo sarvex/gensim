@@ -144,10 +144,7 @@ def filter_example(elem, text, *args, **kwargs):
 
     if text is None:
         return False
-    if _regex_de_excellent.match(text) or _regex_de_featured.match(text):
-        return True
-    else:
-        return False
+    return bool(_regex_de_excellent.match(text) or _regex_de_featured.match(text))
 
 
 def find_interlinks(raw):
@@ -177,8 +174,7 @@ def find_interlinks(raw):
         interlink_tuple = (actual_title, interlink_text)
         interlinks.append(interlink_tuple)
 
-    legit_interlinks = [(i, j) for i, j in interlinks if '[' not in i and ']' not in i]
-    return legit_interlinks
+    return [(i, j) for i, j in interlinks if '[' not in i and ']' not in i]
 
 
 def filter_wiki(raw, promote_remaining=True, simplify_links=True):
@@ -290,11 +286,10 @@ def remove_template(s):
     in_template = False
     prev_c = None
     for i, c in enumerate(s):
-        if not in_template:
-            if c == '{' and c == prev_c:
-                starts.append(i - 1)
-                in_template = True
-                n_open = 1
+        if not in_template and c == '{' and c == prev_c:
+            starts.append(i - 1)
+            in_template = True
+            n_open = 1
         if in_template:
             if c == '{':
                 n_open += 1
@@ -378,9 +373,9 @@ def get_namespace(tag):
 
     """
     m = re.match("^{(.*?)}", tag)
-    namespace = m.group(1) if m else ""
+    namespace = m[1] if m else ""
     if not namespace.startswith("http://www.mediawiki.org/xml/export-"):
-        raise ValueError("%s not recognized as MediaWiki dump namespace" % namespace)
+        raise ValueError(f"{namespace} not recognized as MediaWiki dump namespace")
     return namespace
 
 
@@ -428,13 +423,18 @@ def extract_pages(f, filter_namespaces=False, filter_articles=None):
                 if ns not in filter_namespaces:
                     text = None
 
-            if filter_articles is not None:
-                if not filter_articles(
-                        elem, namespace=namespace, title=title,
-                        text=text, page_tag=page_tag,
-                        text_path=text_path, title_path=title_path,
-                        ns_path=ns_path, pageid_path=pageid_path):
-                    text = None
+            if filter_articles is not None and not filter_articles(
+                elem,
+                namespace=namespace,
+                title=title,
+                text=text,
+                page_tag=page_tag,
+                text_path=text_path,
+                title_path=title_path,
+                ns_path=ns_path,
+                pageid_path=pageid_path,
+            ):
+                text = None
 
             pageid = elem.find(pageid_path).text
             yield title, text or "", pageid  # empty page will yield None
@@ -687,8 +687,10 @@ class WikiCorpus(TextCorpus):
                     articles_all += 1
                     positions_all += len(tokens)
                     # article redirects and short stubs are pruned here
-                    if len(tokens) < self.article_min_tokens or \
-                            any(title.startswith(ignore + ':') for ignore in IGNORED_NAMESPACES):
+                    if len(tokens) < self.article_min_tokens or any(
+                        title.startswith(f'{ignore}:')
+                        for ignore in IGNORED_NAMESPACES
+                    ):
                         continue
                     articles += 1
                     positions += len(tokens)

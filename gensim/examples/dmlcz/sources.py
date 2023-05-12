@@ -96,28 +96,26 @@ class DmlSource(ArticleSource):
         Parse out all fields from meta.xml, return them as a dictionary.
         """
         result = {}
-        xml = open(xmlfile)
-        for line in xml:
-            if line.find('<article>') >= 0:  # skip until the beginning of <article> tag
-                break
-        for line in xml:
-            if line.find('</article>') >= 0:  # end of <article>, we're done
-                break
-            p = re.search(PAT_TAG, line)
-            if p:
-                name, cont = p.groups()
-                name = name.split()[0]
-                name, cont = name.strip(), cont.strip()
-                if name == 'msc':
-                    if len(cont) != 5:
-                        logger.warning('invalid MSC=%s in %s', cont, xmlfile)
-                    result.setdefault('msc', []).append(cont)
-                    continue
-                if name == 'idMR':
-                    cont = cont[2:]  # omit MR from MR123456
-                if name and cont:
-                    result[name] = cont
-        xml.close()
+        with open(xmlfile) as xml:
+            for line in xml:
+                if line.find('<article>') >= 0:  # skip until the beginning of <article> tag
+                    break
+            for line in xml:
+                if line.find('</article>') >= 0:  # end of <article>, we're done
+                    break
+                if p := re.search(PAT_TAG, line):
+                    name, cont = p.groups()
+                    name = name.split()[0]
+                    name, cont = name.strip(), cont.strip()
+                    if name == 'msc':
+                        if len(cont) != 5:
+                            logger.warning('invalid MSC=%s in %s', cont, xmlfile)
+                        result.setdefault('msc', []).append(cont)
+                        continue
+                    if name == 'idMR':
+                        cont = cont[2:]  # omit MR from MR123456
+                    if name and cont:
+                        result[name] = cont
         return result
 
     def idFromDir(self, path):
@@ -256,7 +254,7 @@ class ArxmlivSource(ArticleSource):
             if name == 'Math' and self.path[-1] == 'p' and attr.get('mode', '') == 'inline':
                 tex = attr.get('tex', '')
                 if tex and not tex.isdigit():
-                    self.tokens.append('$%s$' % tex.encode('utf8'))
+                    self.tokens.append(f"${tex.encode('utf8')}$")
             self.path.append(name)
 
         def endElement(self, name):

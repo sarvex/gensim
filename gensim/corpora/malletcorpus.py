@@ -131,10 +131,7 @@ class MalletCorpus(LowCorpus):
 
         doc = super(MalletCorpus, self).line2doc(words)
 
-        if self.metadata:
-            return doc, (docid, doclang)
-        else:
-            return doc
+        return (doc, (docid, doclang)) if self.metadata else doc
 
     @staticmethod
     def save_corpus(fname, corpus, id2word=None, metadata=False):

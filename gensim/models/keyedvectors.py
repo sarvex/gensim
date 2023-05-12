@@ -1080,8 +1080,7 @@ class KeyedVectors(utils.SaveLoad):
         norm = np.linalg.norm(vector_1)
         all_norms = np.linalg.norm(vectors_all, axis=1)
         dot_products = dot(vectors_all, vector_1)
-        similarities = dot_products / (norm * all_norms)
-        return similarities
+        return dot_products / (norm * all_norms)
 
     def distances(self, word_or_vector, other_words=()):
         """Compute cosine distances from given word or vector to all words in `other_words`.
@@ -1265,7 +1264,7 @@ class KeyedVectors(utils.SaveLoad):
                         if case_insensitive:
                             a, b, c, expected = [word.upper() for word in line.split()]
                         else:
-                            a, b, c, expected = [word for word in line.split()]
+                            a, b, c, expected = list(line.split())
                     except ValueError:
                         logger.info("Skipping invalid line #%i in %s", line_no, analogies)
                         continue
@@ -1395,28 +1394,27 @@ class KeyedVectors(utils.SaveLoad):
                 if line.startswith('#'):
                     # May be a comment
                     continue
-                else:
-                    try:
-                        if case_insensitive:
-                            a, b, sim = [word.upper() for word in line.split(delimiter)]
-                        else:
-                            a, b, sim = [word for word in line.split(delimiter)]
-                        sim = float(sim)
-                    except (ValueError, TypeError):
-                        logger.info('Skipping invalid line #%d in %s', line_no, pairs)
-                        continue
-                    if a not in ok_vocab or b not in ok_vocab:
-                        oov += 1
-                        if dummy4unknown:
-                            logger.debug('Zero similarity for line #%d with OOV words: %s', line_no, line.strip())
-                            similarity_model.append(0.0)
-                            similarity_gold.append(sim)
-                            continue
-                        else:
-                            logger.debug('Skipping line #%d with OOV words: %s', line_no, line.strip())
-                            continue
-                    similarity_gold.append(sim)  # Similarity from the dataset
-                    similarity_model.append(self.similarity(a, b))  # Similarity from the model
+                try:
+                    a, b, sim = (
+                        [word.upper() for word in line.split(delimiter)]
+                        if case_insensitive
+                        else list(line.split(delimiter))
+                    )
+                    sim = float(sim)
+                except (ValueError, TypeError):
+                    logger.info('Skipping invalid line #%d in %s', line_no, pairs)
+                    continue
+                if a not in ok_vocab or b not in ok_vocab:
+                    oov += 1
+                    if dummy4unknown:
+                        logger.debug('Zero similarity for line #%d with OOV words: %s', line_no, line.strip())
+                        similarity_model.append(0.0)
+                        similarity_gold.append(sim)
+                    else:
+                        logger.debug('Skipping line #%d with OOV words: %s', line_no, line.strip())
+                    continue
+                similarity_gold.append(sim)  # Similarity from the dataset
+                similarity_model.append(self.similarity(a, b))  # Similarity from the model
         self.key_to_index = original_key_to_index
         spearman = stats.spearmanr(similarity_gold, similarity_model)
         pearson = stats.pearsonr(similarity_gold, similarity_model)
@@ -1495,12 +1493,10 @@ class KeyedVectors(utils.SaveLoad):
             Relative cosine similarity between wa and wb.
 
         """
-        sims = self.similar_by_word(wa, topn)
-        if not sims:
+        if sims := self.similar_by_word(wa, topn):
+            return float(self.similarity(wa, wb)) / (sum(sim for _, sim in sims))
+        else:
             raise ValueError("Cannot calculate relative cosine similarity without any similar words.")
-        rcs = float(self.similarity(wa, wb)) / (sum(sim for _, sim in sims))
-
-        return rcs
 
     def save_word2vec_format(
             self, fname, fvocab=None, binary=False, total_vec=None, write_header=True,
@@ -1660,7 +1656,7 @@ class KeyedVectors(utils.SaveLoad):
         with utils.open(fname, 'rb') as fin:
             header = utils.to_unicode(fin.readline(), encoding=encoding)
             vocab_size, vector_size = (int(x) for x in header.split())  # throws for invalid file format
-            if not vector_size == self.vector_size:
+            if vector_size != self.vector_size:
                 raise ValueError("incompatible vector size %d in file %s" % (vector_size, fname))
                 # TODO: maybe mismatched vectors still useful enough to merge (truncating/padding)?
             if binary:
@@ -1684,7 +1680,9 @@ class KeyedVectors(utils.SaveLoad):
                 for line_no, line in enumerate(fin):
                     parts = utils.to_unicode(line.rstrip(), encoding=encoding, errors=unicode_errors).split(" ")
                     if len(parts) != vector_size + 1:
-                        raise ValueError("invalid vector on line %s (is this really the text format?)" % line_no)
+                        raise ValueError(
+                            f"invalid vector on line {line_no} (is this really the text format?)"
+                        )
                     word, weights = parts[0], [REAL(x) for x in parts[1:]]
                     if word in self.key_to_index:
                         overlap_count += 1
@@ -1741,7 +1739,7 @@ class CompatVocab:
 
     def __str__(self):
         vals = ['%s:%r' % (key, self.__dict__[key]) for key in sorted(self.__dict__) if not key.startswith('_')]
-        return "%s(%s)" % (self.__class__.__name__, ', '.join(vals))
+        return f"{self.__class__.__name__}({', '.join(vals)})"
 
 
 # compatibility alias, allowing older pickle-based `.save()`s to load
@@ -1811,7 +1809,7 @@ def _word2vec_read_binary(fin, kv, counts, vocab_size, vector_size, datatype, un
 
 
 def _word2vec_read_text(fin, kv, counts, vocab_size, vector_size, datatype, unicode_errors, encoding):
-    for line_no in range(vocab_size):
+    for _ in range(vocab_size):
         line = fin.readline()
         if line == b'':
             raise EOFError("unexpected end of input; is count incorrect or file otherwise damaged?")

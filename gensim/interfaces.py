@@ -171,8 +171,7 @@ class TransformedCorpus(CorpusABC):
         """
         if self.chunksize:
             for chunk in utils.grouper(self.corpus, self.chunksize):
-                for transformed in self.obj.__getitem__(chunk, chunksize=None):
-                    yield transformed
+                yield from self.obj.__getitem__(chunk, chunksize=None)
         else:
             for doc in self.corpus:
                 yield self.obj[doc]
@@ -203,7 +202,7 @@ class TransformedCorpus(CorpusABC):
         if hasattr(self.corpus, '__getitem__'):
             return self.obj[self.corpus[docno]]
         else:
-            raise RuntimeError('Type {} does not support slicing.'.format(type(self.corpus)))
+            raise RuntimeError(f'Type {type(self.corpus)} does not support slicing.')
 
 
 class TransformationABC(utils.SaveLoad):
@@ -324,16 +323,11 @@ class SimilarityABC(utils.SaveLoad):
 
         """
         is_corpus, query = utils.is_corpus(query)
-        if self.normalize:
-            # self.normalize only works if the input is a plain gensim vector/corpus (as
-            # advertised in the doc). in fact, input can be a numpy or scipy.sparse matrix
-            # as well, but in that case assume tricks are happening and don't normalize
-            # anything (self.normalize has no effect).
-            if not matutils.ismatrix(query):
-                if is_corpus:
-                    query = [matutils.unitvec(v) for v in query]
-                else:
-                    query = matutils.unitvec(query)
+        if self.normalize and not matutils.ismatrix(query):
+            if is_corpus:
+                query = [matutils.unitvec(v) for v in query]
+            else:
+                query = matutils.unitvec(query)
         result = self.get_similarities(query)
 
         if self.num_best is None:
@@ -388,8 +382,7 @@ class SimilarityABC(utils.SaveLoad):
                 # scipy.sparse happy
                 chunk_end = min(self.index.shape[0], chunk_start + self.chunksize)
                 chunk = self.index[chunk_start: chunk_end]
-                for sim in self[chunk]:
-                    yield sim
+                yield from self[chunk]
         else:
             for doc in self.index:
                 yield self[doc]

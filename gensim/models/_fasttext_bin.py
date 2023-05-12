@@ -204,7 +204,7 @@ def _load_vocab(fin, new_format, encoding='utf-8'):
         pruneidx_size, = _struct_unpack(fin, '@q')
 
     raw_vocab = collections.OrderedDict()
-    for i in range(vocab_size):
+    for _ in range(vocab_size):
         word_bytes = io.BytesIO()
         char_byte = fin.read(1)
 
@@ -225,7 +225,7 @@ def _load_vocab(fin, new_format, encoding='utf-8'):
         raw_vocab[word] = count
 
     if new_format:
-        for j in range(pruneidx_size):
+        for _ in range(pruneidx_size):
             _struct_unpack(fin, '@2i')
 
     return raw_vocab, vocab_size, nwords, ntokens
@@ -296,14 +296,10 @@ def _batched_generator(fin, count, batch_size=1e6):
 
     """
     while count > batch_size:
-        batch = _struct_unpack(fin, '@%df' % batch_size)
-        for f in batch:
-            yield f
+        yield from _struct_unpack(fin, '@%df' % batch_size)
         count -= batch_size
 
-    batch = _struct_unpack(fin, '@%df' % count)
-    for f in batch:
-        yield f
+    yield from _struct_unpack(fin, '@%df' % count)
 
 
 def _fromfile(fin, dtype, count):
@@ -424,7 +420,9 @@ def _conv_field_to_bytes(field_value, field_type):
     elif field_type == 'd':
         return (np.float64(field_value).tobytes())
     else:
-        raise NotImplementedError('Currently conversion to "%s" type is not implemmented.' % field_type)
+        raise NotImplementedError(
+            f'Currently conversion to "{field_type}" type is not implemmented.'
+        )
 
 
 def _get_field_from_model(model, field):
@@ -450,11 +448,9 @@ def _get_field_from_model(model, field):
         # hs = hierarchical softmax loss
         # softmax =  softmax loss
         # one-vs-all = one vs all loss (supervised)
-        if model.hs == 1:
-            return 1
-        elif model.hs == 0:
+        if model.hs == 0:
             return 2
-        elif model.hs == 0 and model.negative == 0:
+        elif model.hs == 1:
             return 1
     elif field == 'maxn':
         return model.wv.max_n
@@ -481,7 +477,7 @@ def _get_field_from_model(model, field):
         # This is skipped in gensim loading setting, using the default from FB C++ code
         return 100
     else:
-        msg = 'Extraction of header field "' + field + '" from Gensim FastText object not implemmented.'
+        msg = f'Extraction of header field "{field}" from Gensim FastText object not implemmented.'
         raise NotImplementedError(msg)
 
 

@@ -71,12 +71,8 @@ def log_conditional_probability(segmented_topics, accumulator, with_std=False, w
                 w_star_count = accumulator[w_star]
                 co_occur_count = accumulator[w_prime, w_star]
                 m_lc_i = np.log(((co_occur_count / num_docs) + EPSILON) / (w_star_count / num_docs))
-            except KeyError:
+            except (KeyError, ZeroDivisionError):
                 m_lc_i = 0.0
-            except ZeroDivisionError:
-                # if w_star_count==0, it will throw exception of divided by zero
-                m_lc_i = 0.0
-
             segment_sims.append(m_lc_i)
 
         topic_coherences.append(aggregate_segment_sims(segment_sims, with_std, with_support))

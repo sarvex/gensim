@@ -87,7 +87,7 @@ def plot_difference_plotly(mdiff, title="", annotation=None):
     if annotation is not None:
         annotation_html = [
             [
-                "+++ {}<br>--- {}".format(", ".join(int_tokens), ", ".join(diff_tokens))
+                f'+++ {", ".join(int_tokens)}<br>--- {", ".join(diff_tokens)}'
                 for (int_tokens, diff_tokens) in row
             ]
             for row in annotation

@@ -333,7 +333,7 @@ class TestDoc2VecModel(unittest.TestCase):
         """Test doc2vec doctag alternatives"""
         corpus = list(DocsLeeCorpus(True))
         # force duplicated tags
-        corpus = corpus[0:10] + corpus
+        corpus = corpus[:10] + corpus
 
         model = doc2vec.Doc2Vec(min_count=1)
         model.build_vocab(corpus)
@@ -343,7 +343,7 @@ class TestDoc2VecModel(unittest.TestCase):
         """Test doc2vec doctag alternatives"""
         corpus = list(DocsLeeCorpus(True))
         # force duplicated tags
-        corpus = corpus[0:10] + corpus
+        corpus = corpus[:10] + corpus
 
         model = doc2vec.Doc2Vec(min_count=1)
         model.build_vocab(corpus)
@@ -688,7 +688,7 @@ class TestDoc2VecModel(unittest.TestCase):
 if not hasattr(TestDoc2VecModel, 'assertLess'):
     # workaround for python 2.6
     def assertLess(self, a, b, msg=None):
-        self.assertTrue(a < b, msg="%s is not less than %s" % (a, b))
+        self.assertTrue(a < b, msg=f"{a} is not less than {b}")
 
     setattr(TestDoc2VecModel, 'assertLess', assertLess)
 

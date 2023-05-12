@@ -66,8 +66,8 @@ def word2vec2tensor(word2vec_model_path, tensor_filename, binary=False):
 
     """
     model = gensim.models.KeyedVectors.load_word2vec_format(word2vec_model_path, binary=binary)
-    outfiletsv = tensor_filename + '_tensor.tsv'
-    outfiletsvmeta = tensor_filename + '_metadata.tsv'
+    outfiletsv = f'{tensor_filename}_tensor.tsv'
+    outfiletsvmeta = f'{tensor_filename}_metadata.tsv'
 
     with utils.open(outfiletsv, 'wb') as file_vector, utils.open(outfiletsvmeta, 'wb') as file_metadata:
         for word in model.index_to_key:

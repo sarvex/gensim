@@ -35,7 +35,7 @@ except (ImportError, ValueError):
 
 logger = logging.getLogger(__name__)
 
-IS_WIN32 = (os.name == "nt") and (struct.calcsize('P') * 8 == 32)
+IS_WIN32 = os.name == "nt" and struct.calcsize('P') == 4
 MAX_WORDVEC_COMPONENT_DIFFERENCE = 1.0e-10
 
 # Limit the size of FastText ngram buckets, for RAM reasons.
@@ -199,7 +199,9 @@ class TestFastTextModel(unittest.TestCase):
         try:
             model = gensim.models.fasttext.load_facebook_model(self.test_model_file)
         except Exception as exc:
-            self.fail('Unable to load FastText model from file %s: %s' % (self.test_model_file, exc))
+            self.fail(
+                f'Unable to load FastText model from file {self.test_model_file}: {exc}'
+            )
         vocab_size, model_size = 1762, 10
         self.assertEqual(model.wv.vectors.shape, (vocab_size, model_size))
         self.assertEqual(len(model.wv), vocab_size, model_size)
@@ -252,7 +254,9 @@ class TestFastTextModel(unittest.TestCase):
         try:
             new_model = gensim.models.fasttext.load_facebook_model(self.test_new_model_file)
         except Exception as exc:
-            self.fail('Unable to load FastText model from file %s: %s' % (self.test_new_model_file, exc))
+            self.fail(
+                f'Unable to load FastText model from file {self.test_new_model_file}: {exc}'
+            )
         vocab_size, model_size = 1763, 10
         self.assertEqual(new_model.wv.vectors.shape, (vocab_size, model_size))
         self.assertEqual(len(new_model.wv), vocab_size, model_size)
@@ -872,8 +876,7 @@ def load_native():
     # ./fasttext cbow -input toy-data.txt -output toy-model -bucket 100 -dim 5
     #
     path = datapath('toy-model.bin')
-    model = gensim.models.fasttext.load_facebook_model(path)
-    return model
+    return gensim.models.fasttext.load_facebook_model(path)
 
 
 def load_vec(fin):

@@ -32,7 +32,7 @@ def iter_merged_prs(since=release_timestamp):
         if not pulls:
             break
 
-        for i, pr in enumerate(pulls):
+        for pr in pulls:
             if pr['merged_at'] and pr['merged_at'] > since:
                 yield pr
 
@@ -51,7 +51,7 @@ def iter_closed_issues(since=release_timestamp):
         if not issues:
             break
 
-        for i, issue in enumerate(issues):
+        for issue in issues:
             #
             # In the github API, all pull requests are issues, but not vice versa.
             #

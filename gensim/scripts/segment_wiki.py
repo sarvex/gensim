@@ -100,10 +100,7 @@ def segment_all_articles(file_path, min_article_character=200, workers=None, inc
             xml_fileobj, min_article_character=min_article_character, processes=workers,
             include_interlinks=include_interlinks)
         wiki_sections_corpus.metadata = True
-        wiki_sections_text = wiki_sections_corpus.get_texts_with_sections()
-
-        for article in wiki_sections_text:
-            yield article
+        yield from wiki_sections_corpus.get_texts_with_sections()
 
 
 def segment_and_write_all_articles(file_path, output_file, min_article_character=200, workers=None,
@@ -228,10 +225,6 @@ def segment(page_xml, include_interlinks=False):
     text_path = "./{%(ns)s}revision/{%(ns)s}text" % ns_mapping
     title_path = "./{%(ns)s}title" % ns_mapping
     ns_path = "./{%(ns)s}ns" % ns_mapping
-    lead_section_heading = "Introduction"
-    top_level_heading_regex = r"\n==[^=].*[^=]==\n"
-    top_level_heading_regex_capture = r"\n==([^=].*[^=])==\n"
-
     title = elem.find(title_path).text
     text = elem.find(text_path).text
     ns = elem.find(ns_path).text
@@ -241,7 +234,11 @@ def segment(page_xml, include_interlinks=False):
     if text is not None:
         if include_interlinks:
             interlinks = find_interlinks(text)
+        top_level_heading_regex = r"\n==[^=].*[^=]==\n"
         section_contents = re.split(top_level_heading_regex, text)
+        lead_section_heading = "Introduction"
+        top_level_heading_regex_capture = r"\n==([^=].*[^=])==\n"
+
         section_headings = [lead_section_heading] + re.findall(top_level_heading_regex_capture, text)
         section_headings = [heading.strip() for heading in section_headings]
         assert len(section_contents) == len(section_headings)
@@ -335,7 +332,10 @@ class _WikiSectionsCorpus(WikiCorpus):
                 article_title, sections = article[0], article[1]
 
                 # article redirects are pruned here
-                if any(article_title.startswith(ignore + ':') for ignore in IGNORED_NAMESPACES):  # filter non-articles
+                if any(
+                    article_title.startswith(f'{ignore}:')
+                    for ignore in IGNORED_NAMESPACES
+                ):  # filter non-articles
                     skipped_namespace += 1
                     continue
                 if not sections or sections[0][1].lstrip().lower().startswith("#redirect"):  # filter redirect

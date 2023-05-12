@@ -168,15 +168,11 @@ class LowCorpus(IndexedCorpus):
                     use_words.append(word)
                 counts[word] += 1
             # construct a list of (wordIndex, wordFrequency) 2-tuples
-            doc = [(self.word2id[w], counts[w]) for w in use_words]
+            return [(self.word2id[w], counts[w]) for w in use_words]
         else:
             word_freqs = Counter(words)
             # construct a list of (word, wordFrequency) 2-tuples
-            doc = list(word_freqs.items())
-
-        # return the document, then forget it and move on to the next one
-        # note that this way, only one doc is stored in memory at a time, not the whole corpus
-        return doc
+            return list(word_freqs.items())
 
     def __iter__(self):
         """Iterate over the corpus.
@@ -224,7 +220,7 @@ class LowCorpus(IndexedCorpus):
             logger.info("no word id mapping provided; initializing from corpus")
             id2word = utils.dict_from_corpus(corpus)
 
-        logger.info("storing corpus in List-Of-Words format into %s" % fname)
+        logger.info(f"storing corpus in List-Of-Words format into {fname}")
         truncated = 0
         offsets = []
         with utils.open(fname, 'wb') as fout:

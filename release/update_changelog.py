@@ -15,13 +15,13 @@ def summarize_prs(since_version):
 
     Yields one-line summaries of each relevant PR as a string.
     """
-    releases = requests.get(URL + '/releases').json()
+    releases = requests.get(f'{URL}/releases').json()
     most_recent_release = releases[0]['tag_name']
     assert most_recent_release  == since_version, 'unexpected most_recent_release: %r' % most_recent_release
 
     published_at = releases[0]['published_at']
 
-    pulls = requests.get(URL + '/pulls', params={'state': 'closed'}).json()
+    pulls = requests.get(f'{URL}/pulls', params={'state': 'closed'}).json()
     for pr in pulls:
         merged_at = pr['merged_at']
         if merged_at is None or merged_at < published_at:

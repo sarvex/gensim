@@ -56,7 +56,7 @@ SIMILAR = """\
 def generateSimilar(corpus, index, method):
     for docNo, topSims in enumerate(index):  # for each document
         # store similarities to the following file
-        outfile = os.path.join(corpus.articleDir(docNo), 'similar_%s.xml' % method)
+        outfile = os.path.join(corpus.articleDir(docNo), f'similar_{method}.xml')
 
         articles = []  # collect similars in this list
         for docNo2, score in topSims:  # for each most similar article
@@ -71,13 +71,12 @@ def generateSimilar(corpus, index, method):
         # now `articles` holds multiple strings in similar_*.xml format
         if SAVE_EMPTY or articles:
             output = ''.join(articles)  # concat all similars to one string
-            if not DRY_RUN:  # only open output files for writing if DRY_RUN is false
-                logging.info("generating %s (%i similars)", outfile, len(articles))
-                outfile = open(outfile, 'w')
-                outfile.write(SIMILAR % output)  # add xml headers and print to file
-                outfile.close()
-            else:
+            if DRY_RUN:
                 logging.info("would be generating %s (%i similars):%s\n", outfile, len(articles), output)
+            else:  # only open output files for writing if DRY_RUN is false
+                logging.info("generating %s (%i similars)", outfile, len(articles))
+                with open(outfile, 'w') as outfile:
+                    outfile.write(SIMILAR % output)  # add xml headers and print to file
         else:
             logging.debug("skipping %s (no similar found)", outfile)
 
@@ -97,20 +96,23 @@ if __name__ == '__main__':
     method = sys.argv[2].strip().lower()
 
     logging.info("loading corpus mappings")
-    config = dmlcorpus.DmlConfig('%s_%s' % (gensim_build.PREFIX, language),
-                                 resultDir=gensim_build.RESULT_DIR, acceptLangs=[language])
+    config = dmlcorpus.DmlConfig(
+        f'{gensim_build.PREFIX}_{language}',
+        resultDir=gensim_build.RESULT_DIR,
+        acceptLangs=[language],
+    )
 
     logging.info("loading word id mapping from %s", config.resultFile('wordids.txt'))
     id2word = dmlcorpus.DmlCorpus.loadDictionary(config.resultFile('wordids.txt'))
     logging.info("loaded %i word ids", len(id2word))
 
     corpus = dmlcorpus.DmlCorpus.load(config.resultFile('.pkl'))
-    input = MmCorpus(config.resultFile('_%s.mm' % method))
+    input = MmCorpus(config.resultFile(f'_{method}.mm'))
     assert len(input) == len(corpus), \
         "corpus size mismatch (%i vs %i): run ./gensim_genmodel.py again" % (len(input), len(corpus))
 
     # initialize structure for similarity queries
-    if method == 'lsi' or method == 'rp':  # for these methods, use dense vectors
+    if method in ['lsi', 'rp']:  # for these methods, use dense vectors
         index = MatrixSimilarity(input, num_best=MAX_SIMILAR + 1, num_features=input.numTerms)
     else:
         index = SparseMatrixSimilarity(input, num_best=MAX_SIMILAR + 1)

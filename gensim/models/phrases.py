@@ -196,11 +196,7 @@ def _is_single(obj):
     if isinstance(peek, str):
         # First item is a string => obj is a single document for sure.
         return True, obj_iter
-    if temp_iter is obj:
-        # An iterator / generator => interpret input as a corpus.
-        return False, obj_iter
-    # If the first item isn't a string, assume obj is an iterable corpus.
-    return False, obj
+    return (False, obj_iter) if temp_iter is obj else (False, obj)
 
 
 class _PhrasesTransformation(interfaces.TransformationABC):
@@ -241,32 +237,29 @@ class _PhrasesTransformation(interfaces.TransformationABC):
         """
         start_token, in_between = None, []
         for word in sentence:
-            if word not in self.connector_words:
-                # The current word is a normal token, not a connector word, which means it's a potential
-                # beginning (or end) of a phrase.
-                if start_token:
-                    # We're inside a potential phrase, of which this word is the end.
-                    phrase, score = self.score_candidate(start_token, word, in_between)
-                    if score is not None:
-                        # Phrase detected!
-                        yield phrase, score
-                        start_token, in_between = None, []
-                    else:
-                        # Not a phrase after all. Dissolve the candidate's constituent tokens as individual words.
-                        yield start_token, None
-                        for w in in_between:
-                            yield w, None
-                        start_token, in_between = word, []  # new potential phrase starts here
-                else:
-                    # Not inside a phrase yet; start a new phrase candidate here.
-                    start_token, in_between = word, []
-            else:  # We're a connector word.
+            if word in self.connector_words:  # We're a connector word.
                 if start_token:
                     # We're inside a potential phrase: add the connector word and keep growing the phrase.
                     in_between.append(word)
                 else:
                     # Not inside a phrase: emit the connector word and move on.
                     yield word, None
+            elif start_token:
+                # We're inside a potential phrase, of which this word is the end.
+                phrase, score = self.score_candidate(start_token, word, in_between)
+                if score is not None:
+                    # Phrase detected!
+                    yield phrase, score
+                    start_token, in_between = None, []
+                else:
+                    # Not a phrase after all. Dissolve the candidate's constituent tokens as individual words.
+                    yield start_token, None
+                    for w in in_between:
+                        yield w, None
+                    start_token, in_between = word, []  # new potential phrase starts here
+            else:
+                # Not inside a phrase yet; start a new phrase candidate here.
+                start_token, in_between = word, []
         # Emit any non-phrase tokens at the end.
         if start_token:
             yield start_token, None
@@ -377,18 +370,17 @@ s        """
             logger.warning('setting pluggable scoring method to original_scorer for compatibility')
             model.scoring = original_scorer
         # If there is a scoring parameter, and it's a text value, load the proper scoring function.
-        if hasattr(model, 'scoring'):
-            if isinstance(model.scoring, str):
-                if model.scoring == 'default':
-                    logger.warning('older version of %s loaded with "default" scoring parameter', cls.__name__)
-                    logger.warning('setting scoring method to original_scorer for compatibility')
-                    model.scoring = original_scorer
-                elif model.scoring == 'npmi':
-                    logger.warning('older version of %s loaded with "npmi" scoring parameter', cls.__name__)
-                    logger.warning('setting scoring method to npmi_scorer for compatibility')
-                    model.scoring = npmi_scorer
-                else:
-                    raise ValueError(f'failed to load {cls.__name__} model, unknown scoring "{model.scoring}"')
+        if hasattr(model, 'scoring') and isinstance(model.scoring, str):
+            if model.scoring == 'default':
+                logger.warning('older version of %s loaded with "default" scoring parameter', cls.__name__)
+                logger.warning('setting scoring method to original_scorer for compatibility')
+                model.scoring = original_scorer
+            elif model.scoring == 'npmi':
+                logger.warning('older version of %s loaded with "npmi" scoring parameter', cls.__name__)
+                logger.warning('setting scoring method to npmi_scorer for compatibility')
+                model.scoring = npmi_scorer
+            else:
+                raise ValueError(f'failed to load {cls.__name__} model, unknown scoring "{model.scoring}"')
 
         # common_terms didn't exist pre-3.?, and was renamed to connector in 4.0.0.
         if not hasattr(model, "connector_words"):
@@ -410,9 +402,10 @@ s        """
             if not isinstance(word, str):
                 logger.info("old version of %s loaded, upgrading %i words in memory", cls.__name__, len(model.vocab))
                 logger.info("re-save the loaded model to avoid this upgrade in the future")
-                vocab = {}
-                for key, value in model.vocab.items():  # needs lots of extra RAM temporarily!
-                    vocab[str(key, encoding='utf8')] = value
+                vocab = {
+                    str(key, encoding='utf8'): value
+                    for key, value in model.vocab.items()
+                }
                 model.vocab = vocab
         if not isinstance(model.delimiter, str):
             model.delimiter = str(model.delimiter, encoding='utf8')
@@ -543,12 +536,15 @@ class Phrases(_PhrasesTransformation):
             'worda_count', 'wordb_count', 'bigram_count', 'len_vocab', 'min_count', 'corpus_word_count',
         ]
         if callable(scoring):
-            missing = [param for param in scoring_params if param not in getargspec(scoring)[0]]
-            if not missing:
-                self.scoring = scoring
-            else:
+            if missing := [
+                param
+                for param in scoring_params
+                if param not in getargspec(scoring)[0]
+            ]:
                 raise ValueError(f'scoring function missing expected parameters {missing}')
 
+            else:
+                self.scoring = scoring
         self.min_count = min_count
         self.threshold = threshold
         self.max_vocab_size = max_vocab_size
@@ -685,10 +681,7 @@ class Phrases(_PhrasesTransformation):
             worda_count=word_a_cnt, wordb_count=word_b_cnt, bigram_count=phrase_cnt,
             len_vocab=len(self.vocab), min_count=self.min_count, corpus_word_count=self.corpus_word_count,
         )
-        if score <= self.threshold:
-            return None, None
-
-        return phrase, score
+        return (None, None) if score <= self.threshold else (phrase, score)
 
     def freeze(self):
         """
@@ -785,9 +778,7 @@ class FrozenPhrases(_PhrasesTransformation):
     def score_candidate(self, word_a, word_b, in_between):
         phrase = self.delimiter.join([word_a] + in_between + [word_b])
         score = self.phrasegrams.get(phrase, NEGATIVE_INFINITY)
-        if score > self.threshold:
-            return phrase, score
-        return None, None
+        return (phrase, score) if score > self.threshold else (None, None)
 
 
 Phraser = FrozenPhrases  # alias for backward compatibility

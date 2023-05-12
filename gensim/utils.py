@@ -134,10 +134,9 @@ def file_or_filename(input):
     if isinstance(input, str):
         # input was a filename: open as file
         return open(input, 'rb')
-    else:
-        # input already a file-like object; just reset to the beginning
-        input.seek(0)
-        return input
+    # input already a file-like object; just reset to the beginning
+    input.seek(0)
+    return input
 
 
 @contextmanager
@@ -306,11 +305,11 @@ def simple_preprocess(doc, deacc=False, min_len=2, max_len=15):
         Tokens extracted from `doc`.
 
     """
-    tokens = [
-        token for token in tokenize(doc, lower=True, deacc=deacc, errors='ignore')
+    return [
+        token
+        for token in tokenize(doc, lower=True, deacc=deacc, errors='ignore')
         if min_len <= len(token) <= max_len and not token.startswith('_')
     ]
-    return tokens
 
 
 def any2utf8(text, errors='strict', encoding='utf8'):
@@ -359,9 +358,7 @@ def any2unicode(text, encoding='utf8', errors='strict'):
         Unicode version of `text`.
 
     """
-    if isinstance(text, str):
-        return text
-    return str(text, encoding, errors=errors)
+    return text if isinstance(text, str) else str(text, encoding, errors=errors)
 
 
 to_unicode = any2unicode
@@ -506,8 +503,7 @@ class SaveLoad:
         """
         def mmap_error(obj, filename):
             return IOError(
-                'Cannot mmap compressed object %s in file %s. ' % (obj, filename)
-                + 'Use `load(fname, mmap=None)` or uncompress files manually.'
+                f'Cannot mmap compressed object {obj} in file {filename}. Use `load(fname, mmap=None)` or uncompress files manually.'
             )
 
         for attrib in getattr(self, '__recursive_saveloads', []):
@@ -827,12 +823,14 @@ class FakeDict:
         self.num_terms = num_terms
 
     def __str__(self):
-        return "FakeDict(num_terms=%s)" % self.num_terms
+        return f"FakeDict(num_terms={self.num_terms})"
 
     def __getitem__(self, val):
         if 0 <= val < self.num_terms:
             return str(val)
-        raise ValueError("internal id out of bounds (%s, expected <0..%s))" % (val, self.num_terms))
+        raise ValueError(
+            f"internal id out of bounds ({val}, expected <0..{self.num_terms}))"
+        )
 
     def __contains__(self, val):
         return 0 <= val < self.num_terms
@@ -870,9 +868,7 @@ class FakeDict:
         return self.num_terms
 
     def get(self, val, default=None):
-        if 0 <= val < self.num_terms:
-            return str(val)
-        return default
+        return str(val) if 0 <= val < self.num_terms else default
 
 
 def dict_from_corpus(corpus):
@@ -897,8 +893,7 @@ def dict_from_corpus(corpus):
 
     """
     num_terms = 1 + get_max_id(corpus)
-    id2word = FakeDict(num_terms)
-    return id2word
+    return FakeDict(num_terms)
 
 
 def is_corpus(obj):
@@ -1055,8 +1050,7 @@ class RepeatCorpusNTimes(SaveLoad):
 
     def __iter__(self):
         for _ in range(self.n):
-            for document in self.corpus:
-                yield document
+            yield from self.corpus
 
 
 class ClippedCorpus(SaveLoad):
@@ -1127,7 +1121,7 @@ class SlicedCorpus(SaveLoad):
                 diff = end - start
                 self.length = diff // step + (diff % step > 0)
             else:
-                self.length = sum(1 for x in self)
+                self.length = sum(1 for _ in self)
 
         return self.length
 
@@ -1195,10 +1189,7 @@ def decode_htmlentities(text):
             else:
                 # they were using a name
                 cp = n2cp.get(ent)
-                if cp:
-                    return safe_unichr(cp)
-                else:
-                    return match.group()
+                return safe_unichr(cp) if cp else match.group()
         except Exception:
             # in case of errors, return original input
             return match.group()
@@ -1329,9 +1320,8 @@ if os.name == 'nt' or (sys.platform == "darwin" and sys.version_info >= (3, 8)):
         """
         if maxsize > 0:
             entity = "Windows" if os.name == 'nt' else "OSX with python3.8+"
-            warnings.warn("detected %s; aliasing chunkize to chunkize_serial" % entity)
-        for chunk in chunkize_serial(corpus, chunksize, as_numpy=as_numpy):
-            yield chunk
+            warnings.warn(f"detected {entity}; aliasing chunkize to chunkize_serial")
+        yield from chunkize_serial(corpus, chunksize, as_numpy=as_numpy)
 else:
     def chunkize(corpus, chunksize, maxsize=0, as_numpy=False):
         """Split `corpus` into fixed-sized chunks, using :func:`~gensim.utils.chunkize_serial`.
@@ -1384,8 +1374,7 @@ else:
                     break
                 yield chunk.pop()
         else:
-            for chunk in chunkize_serial(corpus, chunksize, as_numpy=as_numpy):
-                yield chunk
+            yield from chunkize_serial(corpus, chunksize, as_numpy=as_numpy)
 
 
 def smart_extension(fname, ext):
@@ -1662,7 +1651,7 @@ def pyro_daemon(name, obj, random_suffix=False, ip=None, port=None, ns_conf=None
     if ns_conf is None:
         ns_conf = {}
     if random_suffix:
-        name += '.' + hex(random.randint(0, 0xffffff))[2:]
+        name += f'.{hex(random.randint(0, 16777215))[2:]}'
 
     import Pyro4
     with getNS(**ns_conf) as ns:
@@ -1849,14 +1838,13 @@ def keep_vocab_item(word, count, min_count, trim_rule=None):
 
     if trim_rule is None:
         return default_res
+    rule_res = trim_rule(word, count, min_count)
+    if rule_res == RULE_KEEP:
+        return True
+    elif rule_res == RULE_DISCARD:
+        return False
     else:
-        rule_res = trim_rule(word, count, min_count)
-        if rule_res == RULE_KEEP:
-            return True
-        elif rule_res == RULE_DISCARD:
-            return False
-        else:
-            return default_res
+        return default_res
 
 
 def check_output(stdout=subprocess.PIPE, *popenargs, **kwargs):
@@ -1883,8 +1871,7 @@ def check_output(stdout=subprocess.PIPE, *popenargs, **kwargs):
         logger.debug("COMMAND: %s %s", popenargs, kwargs)
         process = subprocess.Popen(stdout=stdout, *popenargs, **kwargs)
         output, unused_err = process.communicate()
-        retcode = process.poll()
-        if retcode:
+        if retcode := process.poll():
             cmd = kwargs.get("args")
             if cmd is None:
                 cmd = popenargs[0]
@@ -2039,8 +2026,7 @@ def lazy_flatten(nested_list):
     """
     for el in nested_list:
         if isinstance(el, collections.abc.Iterable) and not isinstance(el, str):
-            for sub in flatten(el):
-                yield sub
+            yield from flatten(el)
         else:
             yield el
 

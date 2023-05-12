@@ -209,7 +209,9 @@ class PoincareModel(utils.SaveLoad):
         logger.info("loading relations from train data..")
         for relation in relations:
             if len(relation) != 2:
-                raise ValueError('Relation pair "%s" should have exactly two items' % repr(relation))
+                raise ValueError(
+                    f'Relation pair "{repr(relation)}" should have exactly two items'
+                )
             for item in relation:
                 if item in self.kv.key_to_index:
                     self.kv.set_vecattr(item, 'count', self.kv.get_vecattr(item, 'count') + 1)
@@ -377,12 +379,10 @@ class PoincareModel(utils.SaveLoad):
                 return vectors / norm - (np.sign(vectors) * epsilon)
         else:
             norms = np.linalg.norm(vectors, axis=1)
-            if (norms < threshold).all():
-                return vectors
-            else:
+            if not (norms < threshold).all():
                 vectors[norms >= threshold] *= (threshold / norms[norms >= threshold])[:, np.newaxis]
                 vectors[norms >= threshold] -= np.sign(vectors[norms >= threshold]) * epsilon
-                return vectors
+            return vectors
 
     def save(self, *args, **kwargs):
         """Save complete model to disk, inherited from :class:`~gensim.utils.SaveLoad`.
@@ -517,8 +517,7 @@ class PoincareModel(utils.SaveLoad):
             Each inner list is a list of negative samples for a single node in the input list.
 
         """
-        all_indices = [self._sample_negatives(node) for node in nodes]
-        return all_indices
+        return [self._sample_negatives(node) for node in nodes]
 
     def _train_on_batch(self, relations, check_gradients=False):
         """Perform training for a single training batch.
@@ -1664,7 +1663,7 @@ class LexicalEntailmentEvaluation:
             word_1_terms = self.find_matching_terms(trie, term_1)
             word_2_terms = self.find_matching_terms(trie, term_2)
         except KeyError:
-            raise ValueError("No matching terms found for either %s or %s" % (term_1, term_2))
+            raise ValueError(f"No matching terms found for either {term_1} or {term_2}")
         min_distance = np.inf
         min_term_1, min_term_2 = None, None
         for term_1 in word_1_terms:
@@ -1695,9 +1694,8 @@ class LexicalEntailmentEvaluation:
             List of matching terms.
 
         """
-        matches = trie.items('%s.' % word)
-        matching_terms = [''.join(key_chars) for key_chars, value in matches]
-        return matching_terms
+        matches = trie.items(f'{word}.')
+        return [''.join(key_chars) for key_chars, value in matches]
 
     @staticmethod
     def create_vocab_trie(embedding):

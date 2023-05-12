@@ -249,15 +249,12 @@ class HashDictionary(utils.SaveLoad, dict):
             if self.debug:
                 # increment document count for each unique tokenid that appeared in the document
                 # done here, because several words may map to the same tokenid
-                for tokenid in result.keys():
+                for tokenid in result:
                     self.dfs[tokenid] = self.dfs.get(tokenid, 0) + 1
 
         # return tokenids, in ascending id order
         result = sorted(result.items())
-        if return_missing:
-            return result, missing
-        else:
-            return result
+        return (result, missing) if return_missing else result
 
     def filter_extremes(self, no_below=5, no_above=0.5, keep_n=100000):
         """Filter tokens in the debug dictionary by their frequency.
@@ -337,11 +334,10 @@ class HashDictionary(utils.SaveLoad, dict):
             >>> data.save_as_text(get_tmpfile("dictionary_in_text_format"))
 
         """
-        logger.info("saving %s mapping to %s" % (self, fname))
+        logger.info(f"saving {self} mapping to {fname}")
         with utils.open(fname, 'wb') as fout:
             for tokenid in self.keys():
-                words = sorted(self[tokenid])
-                if words:
+                if words := sorted(self[tokenid]):
                     words_df = [(word, self.dfs_debug.get(word, 0)) for word in words]
                     words_df = ["%s(%i)" % item for item in sorted(words_df, key=lambda x: -x[1])]
                     words_df = '\t'.join(words_df)

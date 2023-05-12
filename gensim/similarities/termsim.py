@@ -61,7 +61,7 @@ class TermSimilarityIndex(SaveLoad):
 
     def __str__(self):
         members = ', '.join('%s=%s' % pair for pair in vars(self).items())
-        return '%s(%s)' % (self.__class__.__name__, members)
+        return f'{self.__class__.__name__}({members})'
 
 
 class UniformTermSimilarityIndex(TermSimilarityIndex):
@@ -217,7 +217,9 @@ def _create_source(index, dictionary, tfidf, symmetric, dominant, nonzero_limit,
     elif dtype is np.float64:
         data_buffer = array('d')
     else:
-        raise ValueError('Dtype %s is unsupported, use numpy.float16, float32, or float64.' % dtype)
+        raise ValueError(
+            f'Dtype {dtype} is unsupported, use numpy.float16, float32, or float64.'
+        )
 
     def cell_full(t1_index, t2_index, similarity):
         if dominant and column_sum[t1_index] + abs(similarity) >= 1.0:
@@ -225,9 +227,7 @@ def _create_source(index, dictionary, tfidf, symmetric, dominant, nonzero_limit,
         assert column_nonzero[t1_index] <= nonzero_limit
         if column_nonzero[t1_index] == nonzero_limit:
             return True  # after adding the similarity, the column would contain more than nonzero_limit elements
-        if symmetric and (t1_index, t2_index) in assigned_cells:
-            return True  # a similarity has already been assigned to this cell
-        return False
+        return bool(symmetric and (t1_index, t2_index) in assigned_cells)
 
     def populate_buffers(t1_index, t2_index, similarity):
         column_buffer.append(t1_index)
@@ -533,9 +533,9 @@ class SparseTermSimilarityMatrix(SaveLoad):
         valid_normalized_values = (True, False, 'maintain')
 
         if normalized_X not in valid_normalized_values:
-            raise ValueError('{} is not a valid value of normalize'.format(normalized_X))
+            raise ValueError(f'{normalized_X} is not a valid value of normalize')
         if normalized_Y not in valid_normalized_values:
-            raise ValueError('{} is not a valid value of normalize'.format(normalized_Y))
+            raise ValueError(f'{normalized_Y} is not a valid value of normalize')
 
         is_corpus_X, X = is_corpus(X)
         is_corpus_Y, Y = is_corpus(Y)
@@ -545,8 +545,8 @@ class SparseTermSimilarityMatrix(SaveLoad):
             Y = dict(Y)
             word_indices = np.array(sorted(set(chain(X, Y))))
             dtype = self.matrix.dtype
-            X = np.array([X[i] if i in X else 0 for i in word_indices], dtype=dtype)
-            Y = np.array([Y[i] if i in Y else 0 for i in word_indices], dtype=dtype)
+            X = np.array([X.get(i, 0) for i in word_indices], dtype=dtype)
+            Y = np.array([Y.get(i, 0) for i in word_indices], dtype=dtype)
             matrix = self.matrix[word_indices[:, None], word_indices].todense()
 
             X = _normalize_dense_vector(X, matrix, normalized_X)
@@ -558,7 +558,7 @@ class SparseTermSimilarityMatrix(SaveLoad):
 
             return result[0, 0]
         elif not is_corpus_X or not is_corpus_Y:
-            if is_corpus_X and not is_corpus_Y:
+            if is_corpus_X:
                 X, Y = Y, X  # make Y the corpus
                 is_corpus_X, is_corpus_Y = is_corpus_Y, is_corpus_X
                 normalized_X, normalized_Y = normalized_Y, normalized_X
@@ -572,7 +572,7 @@ class SparseTermSimilarityMatrix(SaveLoad):
             del expanded_X
 
             X = dict(X)
-            X = np.array([X[i] if i in X else 0 for i in word_indices], dtype=dtype)
+            X = np.array([X.get(i, 0) for i in word_indices], dtype=dtype)
             Y = corpus2csc(Y, num_terms=self.matrix.shape[0], dtype=dtype)[word_indices, :].todense()
             matrix = self.matrix[word_indices[:, None], word_indices].todense()
 

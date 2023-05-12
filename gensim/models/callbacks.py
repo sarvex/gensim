@@ -126,10 +126,7 @@ class Metric:
             Human readable representation of the metric.
 
         """
-        if self.title is not None:
-            return self.title
-        else:
-            return type(self).__name__[:-6]
+        return self.title if self.title is not None else type(self).__name__[:-6]
 
     def set_parameters(self, **parameters):
         """Set the metric parameters.
@@ -530,32 +527,29 @@ class Callback:
                         )
                         # store current epoch's diff diagonal
                         self.diff_mat.put(diff_mat)
-                        # saving initial plot window
-                        self.windows.append(copy.deepcopy(viz_metric))
                     else:
                         viz_metric = self.viz.line(
                             Y=np.array([value]), X=np.array([epoch]), env=metric.viz_env,
                             opts=dict(xlabel='Epochs', ylabel=label, title=label)
                         )
-                        # saving initial plot window
-                        self.windows.append(copy.deepcopy(viz_metric))
+                    # saving initial plot window
+                    self.windows.append(copy.deepcopy(viz_metric))
+                elif value.ndim > 0:
+                    # concatenate with previous epoch's diff diagonals
+                    diff_mat = np.concatenate((self.diff_mat.get(), np.array([value])))
+                    self.viz.heatmap(
+                        X=diff_mat.T, env=metric.viz_env, win=self.windows[i],
+                        opts=dict(xlabel='Epochs', ylabel=label, title=label)
+                    )
+                    self.diff_mat.put(diff_mat)
                 else:
-                    if value.ndim > 0:
-                        # concatenate with previous epoch's diff diagonals
-                        diff_mat = np.concatenate((self.diff_mat.get(), np.array([value])))
-                        self.viz.heatmap(
-                            X=diff_mat.T, env=metric.viz_env, win=self.windows[i],
-                            opts=dict(xlabel='Epochs', ylabel=label, title=label)
-                        )
-                        self.diff_mat.put(diff_mat)
-                    else:
-                        self.viz.line(
-                            Y=np.array([value]),
-                            X=np.array([epoch]),
-                            env=metric.viz_env,
-                            win=self.windows[i],
-                            update='append'
-                        )
+                    self.viz.line(
+                        Y=np.array([value]),
+                        X=np.array([epoch]),
+                        env=metric.viz_env,
+                        win=self.windows[i],
+                        update='append'
+                    )
 
             if metric.logger == "shell":
                 statement = "".join(("Epoch ", str(epoch), ": ", label, " estimate: ", str(value)))

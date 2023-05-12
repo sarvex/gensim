@@ -81,7 +81,12 @@ class TestKeyedVectors(unittest.TestCase):
     def test_most_similar_restrict_vocab(self):
         """Test most_similar returns handles restrict_vocab correctly."""
         expected = set(self.vectors.index_to_key[:5])
-        predicted = set(result[0] for result in self.vectors.most_similar('war', topn=5, restrict_vocab=5))
+        predicted = {
+            result[0]
+            for result in self.vectors.most_similar(
+                'war', topn=5, restrict_vocab=5
+            )
+        }
         self.assertEqual(expected, predicted)
 
     def test_most_similar_with_vector_input(self):
@@ -140,7 +145,7 @@ class TestKeyedVectors(unittest.TestCase):
     def test_closer_than(self):
         """Test words_closer_than returns expected value for distinct and identical nodes."""
         self.assertEqual(self.vectors.closer_than('war', 'war'), [])
-        expected = set(['conflict', 'administration'])
+        expected = {'conflict', 'administration'}
         self.assertEqual(set(self.vectors.closer_than('war', 'terrorism')), expected)
 
     def test_rank(self):
@@ -170,7 +175,9 @@ class TestKeyedVectors(unittest.TestCase):
 
     def test_add_multiple(self):
         """Test that adding a bulk of entities in a manual way works correctly."""
-        entities = ['___some_entity{}_not_present_in_keyed_vectors___'.format(i) for i in range(5)]
+        entities = [
+            f'___some_entity{i}_not_present_in_keyed_vectors___' for i in range(5)
+        ]
         vectors = [np.random.randn(self.vectors.vector_size) for _ in range(5)]
 
         # Test `add` on already filled kv.

@@ -165,10 +165,6 @@ class TestLsiModel(unittest.TestCase, basetmtests.TestBaseTopicModel):
         # now load the external arrays via mmap
         return
 
-        # turns out this test doesn't exercise this because there are no arrays
-        # to be mmaped!
-        self.assertRaises(IOError, lsimodel.LsiModel.load, fname, mmap='r')
-
     def test_docs_processed(self):
         self.assertEqual(self.model.docs_processed, 9)
         self.assertEqual(self.model.docs_processed, self.corpus.num_docs)

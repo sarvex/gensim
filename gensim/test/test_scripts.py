@@ -77,7 +77,7 @@ class TestSegmentWiki(unittest.TestCase):
 
     def test_generator_len(self):
         expected_num_articles = 106
-        num_articles = sum(1 for x in segment_all_articles(self.fname))
+        num_articles = sum(1 for _ in segment_all_articles(self.fname))
 
         self.assertEqual(num_articles, expected_num_articles)
 
@@ -87,7 +87,7 @@ class TestSegmentWiki(unittest.TestCase):
 
         expected_num_articles = 106
         with utils.open(tmpf, 'rb') as f:
-            num_articles = sum(1 for line in f)
+            num_articles = sum(1 for _ in f)
         self.assertEqual(num_articles, expected_num_articles)
 
     def test_segment_and_write_all_articles(self):
@@ -117,9 +117,9 @@ class TestWord2Vec2Tensor(unittest.TestCase):
     def setUp(self):
         self.datapath = datapath('word2vec_pre_kv_c')
         self.output_folder = get_tmpfile('w2v2t_test')
-        self.metadata_file = self.output_folder + '_metadata.tsv'
-        self.tensor_file = self.output_folder + '_tensor.tsv'
-        self.vector_file = self.output_folder + '_vector.tsv'
+        self.metadata_file = f'{self.output_folder}_metadata.tsv'
+        self.tensor_file = f'{self.output_folder}_tensor.tsv'
+        self.vector_file = f'{self.output_folder}_vector.tsv'
 
     def test_conversion(self):
         word2vec2tensor(word2vec_model_path=self.datapath, tensor_filename=self.output_folder)
@@ -135,9 +135,10 @@ class TestWord2Vec2Tensor(unittest.TestCase):
             first_line = f.readline().strip()
 
         number_words, vector_size = map(int, first_line.split(b' '))
-        self.assertTrue(len(metadata) == len(vectors) == number_words,
-            ('Metadata file %s and tensor file %s imply different number of rows.'
-                % (self.metadata_file, self.tensor_file)))
+        self.assertTrue(
+            len(metadata) == len(vectors) == number_words,
+            f'Metadata file {self.metadata_file} and tensor file {self.tensor_file} imply different number of rows.',
+        )
 
         # grab metadata and vectors from written file
         metadata = [word.strip() for word in metadata]

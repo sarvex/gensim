@@ -19,6 +19,7 @@ Examples
 
 """
 
+
 import re
 import string
 import glob
@@ -59,7 +60,7 @@ STOPWORDS = frozenset([
 ])
 
 
-RE_PUNCT = re.compile(r'([%s])+' % re.escape(string.punctuation), re.UNICODE)
+RE_PUNCT = re.compile(f'([{re.escape(string.punctuation)}])+', re.UNICODE)
 RE_TAGS = re.compile(r"<([^>]+)>", re.UNICODE)
 RE_NUMERIC = re.compile(r"[0-9]+", re.UNICODE)
 RE_NONALPHA = re.compile(r"\W", re.UNICODE)

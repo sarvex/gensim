@@ -41,12 +41,12 @@ class TestPoincareData(unittest.TestCase):
     def test_encoding_handling(self):
         """Tests whether utf8 and non-utf8 data loaded correctly."""
         non_utf8_file = datapath('poincare_cp852.tsv')
-        relations = [relation for relation in PoincareRelations(non_utf8_file, encoding='cp852')]
+        relations = list(PoincareRelations(non_utf8_file, encoding='cp852'))
         self.assertEqual(len(relations), 2)
         self.assertEqual(relations[0], (u'tímto', u'budeš'))
 
         utf8_file = datapath('poincare_utf8.tsv')
-        relations = [relation for relation in PoincareRelations(utf8_file)]
+        relations = list(PoincareRelations(utf8_file))
         self.assertEqual(len(relations), 2)
         self.assertEqual(relations[0], (u'tímto', u'budeš'))
 
@@ -175,7 +175,9 @@ class TestPoincareModel(unittest.TestCase):
         try:
             model.train(epochs=1, batch_size=1, check_gradients_every=1)
         except Exception as e:
-            self.fail('Exception %s raised unexpectedly while training with gradient checking' % repr(e))
+            self.fail(
+                f'Exception {repr(e)} raised unexpectedly while training with gradient checking'
+            )
 
     @unittest.skipIf(not autograd_installed, 'autograd needs to be installed for this test')
     def test_wrong_gradients_raises_assertion(self):
@@ -225,7 +227,7 @@ class TestPoincareModel(unittest.TestCase):
         model = PoincareModel(self.data_large, negative=3)
         positive_nodes = model.node_relations[0]  # Positive nodes for node 0
         num_samples = 100  # Repeat experiment multiple times
-        for i in range(num_samples):
+        for _ in range(num_samples):
             negatives = model._sample_negatives(0)
             self.assertFalse(positive_nodes & set(negatives))
             self.assertEqual(len(negatives), len(set(negatives)))
@@ -279,7 +281,12 @@ class TestPoincareKeyedVectors(unittest.TestCase):
     def test_most_similar_restrict_vocab(self):
         """Test most_similar returns handles restrict_vocab correctly."""
         expected = set(self.vectors.index_to_key[:5])
-        predicted = set(result[0] for result in self.vectors.most_similar('dog.n.01', topn=5, restrict_vocab=5))
+        predicted = {
+            result[0]
+            for result in self.vectors.most_similar(
+                'dog.n.01', topn=5, restrict_vocab=5
+            )
+        }
         self.assertEqual(expected, predicted)
 
     def test_most_similar_to_given(self):
@@ -386,7 +393,7 @@ class TestPoincareKeyedVectors(unittest.TestCase):
     def test_closer_than(self):
         """Test closer_than returns expected value for distinct and identical nodes."""
         self.assertEqual(self.vectors.closer_than('dog.n.01', 'dog.n.01'), [])
-        expected = set(['canine.n.02', 'hunting_dog.n.01'])
+        expected = {'canine.n.02', 'hunting_dog.n.01'}
         self.assertEqual(set(self.vectors.closer_than('dog.n.01', 'carnivore.n.01')), expected)
 
     def test_rank(self):

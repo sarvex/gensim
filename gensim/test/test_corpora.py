@@ -32,13 +32,11 @@ AZURE = bool(os.environ.get('PIPELINE_WORKSPACE'))
 
 class DummyTransformer:
     def __getitem__(self, bow):
-        if len(next(iter(bow))) == 2:
-            # single bag of words
-            transformed = [(termid, count + 1) for termid, count in bow]
-        else:
-            # sliced corpus
-            transformed = [[(termid, count + 1) for termid, count in doc] for doc in bow]
-        return transformed
+        return (
+            [(termid, count + 1) for termid, count in bow]
+            if len(next(iter(bow))) == 2
+            else [[(termid, count + 1) for termid, count in doc] for doc in bow]
+        )
 
 
 class CorpusTestCase(unittest.TestCase):
@@ -93,7 +91,7 @@ class CorpusTestCase(unittest.TestCase):
         with open(tmpf, 'w') as f:
             f.write('')
 
-        with open(tmpf + '.vocab', 'w') as f:
+        with open(f'{tmpf}.vocab', 'w') as f:
             f.write('')
 
         corpus = self.corpus_class(tmpf)
@@ -160,7 +158,7 @@ class CorpusTestCase(unittest.TestCase):
         corpus = self.corpus_class(fname)
         if hasattr(corpus, 'id2word'):
             firstdoc = next(iter(corpus))
-            testdoc = set((to_unicode(corpus.id2word[x]), y) for x, y in firstdoc)
+            testdoc = {(to_unicode(corpus.id2word[x]), y) for x, y in firstdoc}
 
             self.assertEqual(testdoc, {('computer', 1), ('human', 1), ('interface', 1)})
 
@@ -169,7 +167,7 @@ class CorpusTestCase(unittest.TestCase):
             corpus.id2word = d
 
             firstdoc2 = next(iter(corpus))
-            testdoc2 = set((to_unicode(corpus.id2word[x]), y) for x, y in firstdoc2)
+            testdoc2 = {(to_unicode(corpus.id2word[x]), y) for x, y in firstdoc2}
             self.assertEqual(testdoc2, {('computer', 1), ('human', 1), ('interface', 1)})
 
     @unittest.skipIf(AZURE, 'see <https://github.com/RaRe-Technologies/gensim/pull/2836>')
@@ -183,8 +181,8 @@ class CorpusTestCase(unittest.TestCase):
             self.assertEqual(doc, corpus[np.int64(idx)])
 
         self.assertEqual(docs, list(corpus[:]))
-        self.assertEqual(docs[0:], list(corpus[0:]))
-        self.assertEqual(docs[0:-1], list(corpus[0:-1]))
+        self.assertEqual(docs[:], list(corpus[:]))
+        self.assertEqual(docs[:-1], list(corpus[:-1]))
         self.assertEqual(docs[2:4], list(corpus[2:4]))
         self.assertEqual(docs[::2], list(corpus[::2]))
         self.assertEqual(docs[::-1], list(corpus[::-1]))
@@ -219,7 +217,9 @@ class CorpusTestCase(unittest.TestCase):
             self.assertEqual(corpus_[0][0][1], docs[0][0][1] + 1)
             self.assertRaises(ValueError, _get_slice, corpus_, {1})
             transformed_docs = [val + 1 for i, d in enumerate(docs) for _, val in d if i in [1, 3, 4]]
-            self.assertEqual(transformed_docs, list(v for doc in corpus_[[1, 3, 4]] for _, v in doc))
+            self.assertEqual(
+                transformed_docs, [v for doc in corpus_[[1, 3, 4]] for _, v in doc]
+            )
             self.assertEqual(3, len(corpus_[[1, 3, 4]]))
         else:
             self.assertRaises(RuntimeError, _get_slice, corpus_, [1, 3, 4])
@@ -348,7 +348,7 @@ class TestMmCorpusCorrupt(CorpusTestCase):
         pass
 
     def test_load(self):
-        self.assertRaises(ValueError, lambda: [doc for doc in self.corpus])
+        self.assertRaises(ValueError, lambda: list(self.corpus))
 
 
 class TestMmCorpusOverflow(CorpusTestCase):
@@ -381,7 +381,7 @@ class TestMmCorpusOverflow(CorpusTestCase):
         # confirm count of terms
         count = 0
         for doc in self.corpus:
-            for term in doc:
+            for _ in doc:
                 count += 1
 
         self.assertEqual(count, 12)
@@ -421,10 +421,7 @@ class TestBleiCorpus(CorpusTestCase):
                 # unique_word_count index1:count1 index2:count2 ... indexn:counnt
                 tokens = line.split()
                 words_len = int(tokens[0])
-                if words_len > 0:
-                    tokens = tokens[1:]
-                else:
-                    tokens = []
+                tokens = tokens[1:] if words_len > 0 else []
                 self.assertEqual(words_len, len(tokens))
                 for token in tokens:
                     word, count = token.split(':')
@@ -568,7 +565,7 @@ class TestTextCorpus(CorpusTestCase):
         lines = ["document%d" % i for i in range(10)]
         corpus = self.corpus_from_lines(lines)
         corpus.tokenizer = lambda text: text.split()
-        docs = [doc for doc in corpus.get_texts()]
+        docs = list(corpus.get_texts())
 
         sample1 = list(corpus.sample_texts(1))
         self.assertEqual(len(sample1), 1)
@@ -577,7 +574,7 @@ class TestTextCorpus(CorpusTestCase):
         sample2 = list(corpus.sample_texts(len(lines)))
         self.assertEqual(len(sample2), len(corpus))
         for i in range(len(corpus)):
-            self.assertEqual(sample2[i], ["document%s" % i])
+            self.assertEqual(sample2[i], [f"document{i}"])
 
         with self.assertRaises(ValueError):
             list(corpus.sample_texts(len(corpus) + 1))
@@ -649,7 +646,7 @@ class TestWikiCorpus(TestTextCorpus):
         # With a huge min_token limit, all articles should be filtered out.
         corpus = self.corpus_class(self.fname, article_min_tokens=100000)
         all_articles = corpus.get_texts()
-        assert (len(list(all_articles)) == 0)
+        assert not list(all_articles)
 
     def test_load_with_metadata(self):
         corpus = self.corpus_class(self.fname, article_min_tokens=0)
@@ -887,12 +884,12 @@ class TestTextDirectoryCorpus(unittest.TestCase):
             f.write('\n'.join(lines))
 
         corpus = textcorpus.TextDirectoryCorpus(dirpath, lines_are_documents=True)
-        docs = [doc for doc in corpus.getstream()]
+        docs = list(corpus.getstream())
         self.assertEqual(len(lines), corpus.length)  # should have cached
         self.assertEqual(lines, docs)
 
         corpus.lines_are_documents = False
-        docs = [doc for doc in corpus.getstream()]
+        docs = list(corpus.getstream())
         self.assertEqual(1, corpus.length)
         self.assertEqual('\n'.join(lines), docs[0])
 

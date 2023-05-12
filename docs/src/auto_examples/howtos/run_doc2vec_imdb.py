@@ -103,11 +103,11 @@ def download_dataset(url='http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v
     with smart_open.open(url, "rb", ignore_ext=True) as fin:
         with smart_open.open(fname, 'wb', ignore_ext=True) as fout:
             while True:
-                buf = fin.read(io.DEFAULT_BUFFER_SIZE)
-                if not buf:
-                    break
-                fout.write(buf)
+                if buf := fin.read(io.DEFAULT_BUFFER_SIZE):
+                    fout.write(buf)
 
+                else:
+                    break
     return fname
 
 def create_sentiment_document(name, text, index):
@@ -246,9 +246,7 @@ from random import sample
 def logistic_predictor_from_data(train_targets, train_regressors):
     """Fit a statsmodel logistic predictor on supplied data"""
     logit = sm.Logit(train_targets, train_regressors)
-    predictor = logit.fit(disp=0)
-    # print(predictor.summary())
-    return predictor
+    return logit.fit(disp=0)
 
 def error_rate_for_model(test_model, train_set, test_set):
     """Report error rate on test_doc sentiments, using supplied model and train_docs"""

@@ -159,7 +159,7 @@ class _TestSimilarityABC(unittest.TestCase):
             index = self.cls(None, CORPUS, num_features=len(DICTIONARY), shardsize=5)
         else:
             index = self.cls(CORPUS, num_features=len(DICTIONARY))
-        sims = [sim for sim in index]
+        sims = list(index)
         expected = numpy.array([
             [0.99999994, 0.23570226, 0.28867513, 0.23570226, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.23570226, 1.0, 0.40824831, 0.33333334, 0.70710677, 0.0, 0.0, 0.0, 0.23570226],
@@ -522,9 +522,9 @@ class TestSimilarity(_TestSimilarityABC):
 
     def test_chunksize(self):
         index = self.cls(None, CORPUS, num_features=len(DICTIONARY), shardsize=5)
-        expected = [sim for sim in index]
+        expected = list(index)
         index.chunksize = len(index) - 1
-        sims = [sim for sim in index]
+        sims = list(index)
         self.assertTrue(numpy.allclose(expected, sims))
         index.destroy()
 
@@ -540,7 +540,7 @@ class TestWord2VecAnnoyIndexer(unittest.TestCase):
         try:
             import annoy  # noqa:F401
         except ImportError as e:
-            raise unittest.SkipTest("Annoy library is not available: %s" % e)
+            raise unittest.SkipTest(f"Annoy library is not available: {e}")
 
         from gensim.similarities.annoy import AnnoyIndexer
         self.indexer = AnnoyIndexer
@@ -619,7 +619,7 @@ class TestWord2VecAnnoyIndexer(unittest.TestCase):
         fname = get_tmpfile('gensim_similarities.tst.pkl')
         index.save(fname)
         self.assertTrue(os.path.exists(fname))
-        self.assertTrue(os.path.exists(fname + '.d'))
+        self.assertTrue(os.path.exists(f'{fname}.d'))
 
     def assertLoadedIndexEqual(self, index, model):
         from gensim.similarities.annoy import AnnoyIndexer
@@ -642,7 +642,7 @@ class TestDoc2VecAnnoyIndexer(unittest.TestCase):
         try:
             import annoy  # noqa:F401
         except ImportError as e:
-            raise unittest.SkipTest("Annoy library is not available: %s" % e)
+            raise unittest.SkipTest(f"Annoy library is not available: {e}")
 
         from gensim.similarities.annoy import AnnoyIndexer
 
@@ -670,7 +670,7 @@ class TestDoc2VecAnnoyIndexer(unittest.TestCase):
         fname = get_tmpfile('gensim_similarities.tst.pkl')
         self.index.save(fname)
         self.assertTrue(os.path.exists(fname))
-        self.assertTrue(os.path.exists(fname + '.d'))
+        self.assertTrue(os.path.exists(f'{fname}.d'))
 
     def test_load_not_exist(self):
         from gensim.similarities.annoy import AnnoyIndexer
@@ -699,7 +699,7 @@ class TestWord2VecNmslibIndexer(unittest.TestCase):
         try:
             import nmslib  # noqa:F401
         except ImportError as e:
-            raise unittest.SkipTest("NMSLIB library is not available: %s" % e)
+            raise unittest.SkipTest(f"NMSLIB library is not available: {e}")
 
         from gensim.similarities.nmslib import NmslibIndexer
         self.indexer = NmslibIndexer
@@ -768,7 +768,7 @@ class TestWord2VecNmslibIndexer(unittest.TestCase):
         fname = get_tmpfile('gensim_similarities.tst.pkl')
         index.save(fname)
         self.assertTrue(os.path.exists(fname))
-        self.assertTrue(os.path.exists(fname + '.d'))
+        self.assertTrue(os.path.exists(f'{fname}.d'))
 
     def assertLoadedIndexEqual(self, index, model):
         from gensim.similarities.nmslib import NmslibIndexer
@@ -790,7 +790,7 @@ class TestDoc2VecNmslibIndexer(unittest.TestCase):
         try:
             import nmslib  # noqa:F401
         except ImportError as e:
-            raise unittest.SkipTest("NMSLIB library is not available: %s" % e)
+            raise unittest.SkipTest(f"NMSLIB library is not available: {e}")
 
         from gensim.similarities.nmslib import NmslibIndexer
 
@@ -818,7 +818,7 @@ class TestDoc2VecNmslibIndexer(unittest.TestCase):
         fname = get_tmpfile('gensim_similarities.tst.pkl')
         self.index.save(fname)
         self.assertTrue(os.path.exists(fname))
-        self.assertTrue(os.path.exists(fname + '.d'))
+        self.assertTrue(os.path.exists(f'{fname}.d'))
 
     def test_load_not_exist(self):
         from gensim.similarities.nmslib import NmslibIndexer

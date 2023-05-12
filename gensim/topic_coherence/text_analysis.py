@@ -308,10 +308,7 @@ class WindowedTextsAnalyzer(UsesDictionary):
 
     def text_is_relevant(self, text):
         """Check if the text has any relevant words."""
-        for word in text:
-            if word in self.relevant_words:
-                return True
-        return False
+        return any(word in self.relevant_words for word in text)
 
 
 class InvertedIndexAccumulator(WindowedTextsAnalyzer, InvertedIndexBased):
@@ -436,8 +433,7 @@ class ParallelWordOccurrenceAccumulator(WindowedTextsAnalyzer):
         self.batch_size = kwargs.get('batch_size', 64)
 
     def __str__(self):
-        return "%s(processes=%s, batch_size=%s)" % (
-            self.__class__.__name__, self.processes, self.batch_size)
+        return f"{self.__class__.__name__}(processes={self.processes}, batch_size={self.batch_size})"
 
     def accumulate(self, texts, window_size):
         workers, input_q, output_q = self.start_workers(window_size)
@@ -620,7 +616,7 @@ class WordVectorsAccumulator(UsesDictionary):
 
     def not_in_vocab(self, words):
         uniq_words = set(utils.flatten(words))
-        return set(word for word in uniq_words if word not in self.model)
+        return {word for word in uniq_words if word not in self.model}
 
     def get_occurrences(self, word):
         """Return number of docs the word occurs in, once `accumulate` has been called."""

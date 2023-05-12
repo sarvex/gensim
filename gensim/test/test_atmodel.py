@@ -12,6 +12,7 @@ needed are thus quite similar.
 """
 
 
+
 import logging
 import unittest
 import numbers
@@ -58,7 +59,7 @@ doc2author = {
 # More data with new and old authors (to test update method).
 # Although the text is just a subset of the previous, the model
 # just sees it as completely new data.
-texts_new = common_texts[0:3]
+texts_new = common_texts[:3]
 author2doc_new = {'jill': [0], 'bob': [0, 1], 'sally': [1, 2]}
 dictionary_new = Dictionary(texts_new)
 corpus_new = [dictionary_new.doc2bow(text) for text in texts_new]
@@ -430,10 +431,7 @@ class TestAuthorTopicModel(unittest.TestCase, basetmtests.TestBaseTopicModel):
             passes=100, random_state=np.random.seed(0)
         )
 
-        author_topics = []
-        for a in model.id2author.values():
-            author_topics.append(model.get_author_topics(a))
-
+        author_topics = [model.get_author_topics(a) for a in model.id2author.values()]
         for topic in author_topics:
             self.assertTrue(isinstance(topic, list))
             for k, v in topic:
@@ -465,9 +463,8 @@ class TestAuthorTopicModel(unittest.TestCase, basetmtests.TestBaseTopicModel):
             corpus, author2doc=author2doc, id2word=dictionary, num_topics=2,
             passes=100, random_state=np.random.seed(0)
         )
-        author2doc_newauthor = {}
-        author2doc_newauthor["test"] = [0, 1]
-        model.update(corpus=corpus[0:2], author2doc=author2doc_newauthor)
+        author2doc_newauthor = {"test": [0, 1]}
+        model.update(corpus=corpus[:2], author2doc=author2doc_newauthor)
 
         # temp save model state vars before get_new_author_topics is called
         state_gamma_len = len(model.state.gamma)
@@ -476,7 +473,7 @@ class TestAuthorTopicModel(unittest.TestCase, basetmtests.TestBaseTopicModel):
         id2author_len = len(model.id2author)
         doc2author_len = len(model.doc2author)
 
-        new_author_topics = model.get_new_author_topics(corpus=corpus[0:2])
+        new_author_topics = model.get_new_author_topics(corpus=corpus[:2])
 
         # sanity check
         for k, v in new_author_topics:

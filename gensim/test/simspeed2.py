@@ -13,6 +13,7 @@ each corpus for testing (or use all if no NUMDOCS is given).
 Example: ./simspeed2.py wikismall.dense.mm wikismall.sparse.mm
 """
 
+
 import logging
 import sys
 import itertools
@@ -54,8 +55,6 @@ if __name__ == '__main__':
     for chunksize in [1, 8, 32, 64, 128, 256, 512, 1024, index_dense.shardsize]:
         index_dense.chunksize = chunksize
         start = time()
-        for sim in index_dense:
-            pass
         taken = time() - start
         queries = math.ceil(1.0 * len(corpus_dense) / chunksize)
         logging.info(
@@ -68,7 +67,7 @@ if __name__ == '__main__':
     for chunksize in [1, 8, 32, 64, 128, 256, 512, 1024, index_dense.shardsize]:
         index_dense.chunksize = chunksize
         start = time()
-        sims = [sim for sim in index_dense]
+        sims = list(index_dense)
         taken = time() - start
         queries = math.ceil(1.0 * len(corpus_dense) / chunksize)
         logging.info(
@@ -85,8 +84,6 @@ if __name__ == '__main__':
     for chunksize in [1, 5, 10, 100, 256, 500, 1000, index_sparse.shardsize]:
         index_sparse.chunksize = chunksize
         start = time()
-        for sim in index_sparse:
-            pass
         taken = time() - start
         queries = math.ceil(1.0 * len(corpus_sparse) / chunksize)
         logging.info(
@@ -99,8 +96,6 @@ if __name__ == '__main__':
     for chunksize in [1, 5, 10, 100, 256, 500, 1000, index_sparse.shardsize]:
         index_sparse.chunksize = chunksize
         start = time()
-        for sim in index_sparse:
-            pass
         taken = time() - start
         queries = math.ceil(1.0 * len(corpus_sparse) / chunksize)
         logging.info(

@@ -275,17 +275,17 @@ class TextCorpus(interfaces.CorpusABC):
 
         """
         self.dictionary = dictionary if dictionary is not None else Dictionary()
-        if self.input is not None:
-            if dictionary is None:
-                logger.info("Initializing dictionary")
-                metadata_setting = self.metadata
-                self.metadata = False
-                self.dictionary.add_documents(self.get_texts())
-                self.metadata = metadata_setting
-            else:
-                logger.info("Input stream provided but dictionary already initialized")
-        else:
+        if self.input is None:
             logger.warning("No input document stream provided; assuming dictionary will be initialized some other way.")
+
+        elif dictionary is None:
+            logger.info("Initializing dictionary")
+            metadata_setting = self.metadata
+            self.metadata = False
+            self.dictionary.add_documents(self.get_texts())
+            self.metadata = metadata_setting
+        else:
+            logger.info("Input stream provided but dictionary already initialized")
 
     def __iter__(self):
         """Iterate over the corpus.
@@ -428,7 +428,7 @@ class TextCorpus(interfaces.CorpusABC):
 
         if not n <= length:
             raise ValueError("n {0:d} is larger/equal than length of corpus {1:d}.".format(n, length))
-        if not 0 <= n:
+        if n < 0:
             raise ValueError("Negative sample size n {0:d}.".format(n))
 
         i = 0
@@ -684,7 +684,6 @@ def walk(top, topdown=True, onerror=None, followlinks=False, depth=0):
         if followlinks or not islink(new_path):
 
             # Generator so besides the recursive `walk()` call, no additional cost here.
-            for x in walk(new_path, topdown, onerror, followlinks, depth + 1):
-                yield x
+            yield from walk(new_path, topdown, onerror, followlinks, depth + 1)
     if not topdown:
         yield depth, top, dirs, nondirs

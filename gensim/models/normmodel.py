@@ -37,11 +37,9 @@ class NormModel(interfaces.TransformationABC):
         self.norm = norm
         if corpus is not None:
             self.calc_norm(corpus)
-        else:
-            pass
 
     def __str__(self):
-        return "NormModel(num_docs=%s, num_nnz=%s, norm=%s)" % (self.num_docs, self.num_nnz, self.norm)
+        return f"NormModel(num_docs={self.num_docs}, num_nnz={self.num_nnz}, norm={self.norm})"
 
     def calc_norm(self, corpus):
         """Calculate the norm by calling :func:`~gensim.matutils.unitvec` with the norm parameter.
@@ -79,8 +77,7 @@ class NormModel(interfaces.TransformationABC):
 
 
         """
-        vector = matutils.unitvec(bow, self.norm)
-        return vector
+        return matutils.unitvec(bow, self.norm)
 
     def __getitem__(self, bow):
         """Call the :func:`~gensim.models.normmodel.NormModel.normalize`.

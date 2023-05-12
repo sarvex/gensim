@@ -95,13 +95,13 @@ class TestLdaModelInner(unittest.TestCase):
         rs = self.random_state
 
         for dtype in [np.float16, np.float32, np.float64]:
-            for i in range(self.num_runs):
+            for _ in range(self.num_runs):
                 input = rs.uniform(-1000, 1000, size=(self.num_topics, 1))
 
                 known_good = logsumexp(input)
                 test_values = matutils.logsumexp(input)
 
-                msg = "logsumexp failed for dtype={}".format(dtype)
+                msg = f"logsumexp failed for dtype={dtype}"
                 self.assertTrue(np.allclose(known_good, test_values), msg)
 
     def test_mean_absolute_difference(self):
@@ -109,14 +109,14 @@ class TestLdaModelInner(unittest.TestCase):
         rs = self.random_state
 
         for dtype in [np.float16, np.float32, np.float64]:
-            for i in range(self.num_runs):
+            for _ in range(self.num_runs):
                 input1 = rs.uniform(-10000, 10000, size=(self.num_topics,))
                 input2 = rs.uniform(-10000, 10000, size=(self.num_topics,))
 
                 known_good = mean_absolute_difference(input1, input2)
                 test_values = matutils.mean_absolute_difference(input1, input2)
 
-                msg = "mean_absolute_difference failed for dtype={}".format(dtype)
+                msg = f"mean_absolute_difference failed for dtype={dtype}"
                 self.assertTrue(np.allclose(known_good, test_values), msg)
 
     def test_dirichlet_expectation(self):
@@ -124,13 +124,13 @@ class TestLdaModelInner(unittest.TestCase):
         rs = self.random_state
 
         for dtype in [np.float16, np.float32, np.float64]:
-            for i in range(self.num_runs):
+            for _ in range(self.num_runs):
                 # 1 dimensional case
                 input_1d = rs.uniform(.01, 10000, size=(self.num_topics,))
                 known_good = dirichlet_expectation(input_1d)
                 test_values = matutils.dirichlet_expectation(input_1d)
 
-                msg = "dirichlet_expectation_1d failed for dtype={}".format(dtype)
+                msg = f"dirichlet_expectation_1d failed for dtype={dtype}"
                 self.assertTrue(np.allclose(known_good, test_values), msg)
 
                 # 2 dimensional case
@@ -138,7 +138,7 @@ class TestLdaModelInner(unittest.TestCase):
                 known_good = dirichlet_expectation(input_2d)
                 test_values = matutils.dirichlet_expectation(input_2d)
 
-                msg = "dirichlet_expectation_2d failed for dtype={}".format(dtype)
+                msg = f"dirichlet_expectation_2d failed for dtype={dtype}"
                 self.assertTrue(np.allclose(known_good, test_values), msg)
 
 

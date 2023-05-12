@@ -57,7 +57,7 @@ class TestTranslationMatrix(unittest.TestCase):
             test_source_word, topn=5, source_lang_vec=self.source_word_vec, target_lang_vec=self.target_word_vec,
         )
 
-        for idx, item in enumerate(self.test_word_pairs):
+        for item in self.test_word_pairs:
             self.assertTrue(item[1] in translated_words[item[0]])
 
     def test_translate_gc(self):
@@ -71,7 +71,7 @@ class TestTranslationMatrix(unittest.TestCase):
             source_lang_vec=self.source_word_vec, target_lang_vec=self.target_word_vec
         )
 
-        for idx, item in enumerate(self.test_word_pairs):
+        for item in self.test_word_pairs:
             self.assertTrue(item[1] in translated_words[item[0]])
 
 

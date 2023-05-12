@@ -70,7 +70,7 @@ class RpModel(interfaces.TransformationABC):
             self.add_lifecycle_event("created", msg=f"created {self}")
 
     def __str__(self):
-        return "RpModel(num_terms=%s, num_topics=%s)" % (self.num_terms, self.num_topics)
+        return f"RpModel(num_terms={self.num_terms}, num_topics={self.num_topics})"
 
     def initialize(self, corpus):
         """Initialize the random projection matrix.

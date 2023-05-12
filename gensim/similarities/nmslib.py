@@ -158,7 +158,7 @@ class NmslibIndexer():
         This method saves **only** the index (**the model isn't preserved**).
 
         """
-        fname_dict = fname + '.d'
+        fname_dict = f'{fname}.d'
         self.index.saveIndex(fname)
         d = {'index_params': self.index_params, 'query_time_params': self.query_time_params, 'labels': self.labels}
         with open(fname_dict, 'wb') as fout:
@@ -174,7 +174,7 @@ class NmslibIndexer():
             Path previously used in `save()`.
 
         """
-        fname_dict = fname + '.d'
+        fname_dict = f'{fname}.d'
         with open(fname_dict, 'rb') as f:
             d = _pickle.load(f)
         index_params = d['index_params']

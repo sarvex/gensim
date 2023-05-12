@@ -161,7 +161,7 @@ class SvmLightCorpus(IndexedCorpus):
             return None  # ignore comments and empty lines
         parts = line.split()
         if not parts:
-            raise ValueError('invalid line format in %s' % self.fname)
+            raise ValueError(f'invalid line format in {self.fname}')
         target, fields = parts[0], [part.rsplit(':', 1) for part in parts[1:]]
         # ignore 'qid' features, convert 1-based feature ids to 0-based
         doc = [(int(p1) - 1, float(p2)) for p1, p2 in fields if p1 != 'qid']

@@ -516,18 +516,13 @@ sg_values = [0, 1]
 hs_values = [0, 1]
 
 fast = True
-if fast:
-    input_data_subset = input_data[:3]
-else:
-    input_data_subset = input_data
-
-
+input_data_subset = input_data[:3] if fast else input_data
 for data in input_data_subset:
     for sg_val in sg_values:
         for hs_val in hs_values:
             for loss_flag in [True, False]:
                 time_taken_list = []
-                for i in range(3):
+                for _ in range(3):
                     start_time = time.time()
                     w2v_model = gensim.models.Word2Vec(
                         data,

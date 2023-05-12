@@ -108,7 +108,7 @@ class BleiCorpus(IndexedCorpus):
         """
         parts = utils.to_unicode(line).split()
         if int(parts[0]) != len(parts) - 1:
-            raise ValueError("invalid format in %s: %s" % (self.fname, repr(line)))
+            raise ValueError(f"invalid format in {self.fname}: {repr(line)}")
         doc = [part.rsplit(':', 1) for part in parts[1:]]
         doc = [(int(p1), float(p2)) for p1, p2 in doc]
         return doc

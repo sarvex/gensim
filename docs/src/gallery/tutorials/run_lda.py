@@ -153,11 +153,11 @@ from gensim.models import Phrases
 
 # Add bigrams and trigrams to docs (only ones that appear 20 times or more).
 bigram = Phrases(docs, min_count=20)
-for idx in range(len(docs)):
-    for token in bigram[docs[idx]]:
+for doc_ in docs:
+    for token in bigram[doc_]:
         if '_' in token:
             # Token is a bigram, add to document.
-            docs[idx].append(token)
+            doc_.append(token)
 
 ###############################################################################
 # We remove rare words and common words based on their *document frequency*.
@@ -281,7 +281,7 @@ model = LdaModel(
 top_topics = model.top_topics(corpus) #, num_words=20)
 
 # Average topic coherence is the sum of topic coherences of all topics, divided by the number of topics.
-avg_topic_coherence = sum([t[1] for t in top_topics]) / num_topics
+avg_topic_coherence = sum(t[1] for t in top_topics) / num_topics
 print('Average topic coherence: %.4f.' % avg_topic_coherence)
 
 from pprint import pprint

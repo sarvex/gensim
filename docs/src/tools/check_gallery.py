@@ -47,9 +47,9 @@ def find_unbuilt_examples(gallery_subdir):
     for root, dirs, files in os.walk(gallery_subdir):
         in_files = [os.path.join(root, f) for f in files if f.endswith('.py')]
         for in_file in in_files:
-            out_file = in_file.replace('/gallery/', '/auto_examples/') 
+            out_file = in_file.replace('/gallery/', '/auto_examples/')
             friends = list(get_friends(out_file))
-            if any([not os.path.isfile(f) for f in friends]):
+            if any(not os.path.isfile(f) for f in friends):
                 yield in_file
 
 
@@ -90,27 +90,25 @@ def main():
     for out_file in find_py_files(output_dir):
         in_file = out_file.replace('/auto_examples/', '/gallery/')
         if not os.path.isfile(in_file):
-            print('%s is stale, consider removing it and its friends.' % in_file)
-            for friend in get_friends(out_file):
-                suggestions.append('git rm -f %s' % friend)
+            print(f'{in_file} is stale, consider removing it and its friends.')
+            suggestions.extend(f'git rm -f {friend}' for friend in get_friends(out_file))
             retval = 1
             continue
 
         for friend in get_friends(out_file):
             if not is_under_version_control(friend):
-                print('%s is not under version control, consider adding it.' % friend)
-                suggestions.append('git add %s' % friend)
+                print(f'{friend} is not under version control, consider adding it.')
+                suggestions.append(f'git add {friend}')
 
         if diff(in_file, out_file):
-            print('%s is stale.' % in_file)
+            print(f'{in_file} is stale.')
             rebuild = True
             retval = 1
 
     gallery_dir = output_dir.replace('/auto_examples', '/gallery')
-    unbuilt = list(find_unbuilt_examples(gallery_dir))
-    if unbuilt:
+    if unbuilt := list(find_unbuilt_examples(gallery_dir)):
         for u in unbuilt:
-            print('%s has not been built yet' % u)
+            print(f'{u} has not been built yet')
         rebuild = True
         retval = 1
 

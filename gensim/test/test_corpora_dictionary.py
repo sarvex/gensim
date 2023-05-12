@@ -292,7 +292,7 @@ class TestDictionary(unittest.TestCase):
 
         # remove words that appear only once
         all_tokens = list(chain.from_iterable(texts))
-        tokens_once = set(word for word in set(all_tokens) if all_tokens.count(word) == 1)
+        tokens_once = {word for word in set(all_tokens) if all_tokens.count(word) == 1}
         texts = [[word for word in text if word not in tokens_once] for text in texts]
 
         dictionary = Dictionary(texts)

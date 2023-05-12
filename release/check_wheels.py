@@ -4,6 +4,7 @@
 # Copyright (C) 2019 Radim Rehurek <me@radimrehurek.com>
 # Licensed under the GNU LGPL v2.1 - http://www.gnu.org/licenses/lgpl.html
 """Check that our wheels are all there."""
+
 import os
 import os.path
 import re
@@ -57,7 +58,7 @@ fail = False
 for f in expected:
     wheel_path = os.path.join(dist_path, f % dict(release=release))
     if not os.path.isfile(wheel_path):
-        print('FAIL: %s' % wheel_path)
+        print(f'FAIL: {wheel_path}')
         fail = True
 
 if not fail:

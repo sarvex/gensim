@@ -45,22 +45,21 @@ class DmlConfig:
         logger.info('initialized %s', self)
 
     def resultFile(self, fname):
-        return os.path.join(self.resultDir, self.configId + '_' + fname)
+        return os.path.join(self.resultDir, f'{self.configId}_{fname}')
 
     def acceptArticle(self, metadata):
         lang = metadata.get('language', 'unk')
-        if 'any' not in self.acceptLangs and lang not in self.acceptLangs:
-            return False
-        return True
+        return 'any' in self.acceptLangs or lang in self.acceptLangs
 
     def addSource(self, source):
         sourceId = str(source)
-        assert sourceId not in self.sources, "source %s already present in the config!" % sourceId
+        assert (
+            sourceId not in self.sources
+        ), f"source {sourceId} already present in the config!"
         self.sources[sourceId] = source
 
     def __str__(self):
-        return ("DmlConfig(id=%s, sources=[%s], acceptLangs=[%s])" %
-                (self.configId, ', '.join(self.sources.iterkeys()), ', '.join(self.acceptLangs)))
+        return f"DmlConfig(id={self.configId}, sources=[{', '.join(self.sources.iterkeys())}], acceptLangs=[{', '.join(self.acceptLangs)}])"
 # endclass DmlConfig
 
 
@@ -90,7 +89,7 @@ class DmlCorpus(interfaces.CorpusABC):
 
         A bag-of-words vector is simply a list of ``(tokenId, tokenCount)`` 2-tuples.
         """
-        for docNo, (sourceId, docUri) in enumerate(self.documents):
+        for sourceId, docUri in self.documents:
             source = self.config.sources[sourceId]
 
             contents = source.getContent(docUri)
@@ -159,15 +158,14 @@ class DmlCorpus(interfaces.CorpusABC):
 
     def saveDictionary(self, fname):
         logger.info("saving dictionary mapping to %s", fname)
-        fout = open(fname, 'w')
-        for tokenId, token in self.dictionary.id2token.iteritems():
-            fout.write("%i\t%s\n" % (tokenId, token))
-        fout.close()
+        with open(fname, 'w') as fout:
+            for tokenId, token in self.dictionary.id2token.iteritems():
+                fout.write("%i\t%s\n" % (tokenId, token))
 
     @staticmethod
     def loadDictionary(fname):
         result = {}
-        for lineNo, line in enumerate(open(fname)):
+        for line in open(fname):
             pair = line[:-1].split('\t')
             if len(pair) != 2:
                 continue
@@ -177,12 +175,11 @@ class DmlCorpus(interfaces.CorpusABC):
 
     def saveDocuments(self, fname):
         logger.info("saving documents mapping to %s", fname)
-        fout = open(fname, 'w')
-        for docNo, docId in enumerate(self.documents):
-            sourceId, docUri = docId
-            intId, pathId = docUri
-            fout.write("%i\t%s\n" % (docNo, repr(docId)))
-        fout.close()
+        with open(fname, 'w') as fout:
+            for docNo, docId in enumerate(self.documents):
+                sourceId, docUri = docId
+                intId, pathId = docUri
+                fout.write("%i\t%s\n" % (docNo, repr(docId)))
 
     def saveAsText(self):
         """

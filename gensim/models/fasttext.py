@@ -846,24 +846,21 @@ def _check_model(m):
     """Model sanity checks. Run after everything has been completely initialized."""
     if m.wv.vector_size != m.wv.vectors_ngrams.shape[1]:
         raise ValueError(
-            'mismatch between vector size in model params (%s) and model vectors (%s)' % (
-                m.wv.vector_size, m.wv.vectors_ngrams,
-            )
+            f'mismatch between vector size in model params ({m.wv.vector_size}) and model vectors ({m.wv.vectors_ngrams})'
         )
 
-    if hasattr(m, 'syn1neg') and m.syn1neg is not None:
-        if m.wv.vector_size != m.syn1neg.shape[1]:
-            raise ValueError(
-                'mismatch between vector size in model params (%s) and trainables (%s)' % (
-                    m.wv.vector_size, m.wv.vectors_ngrams,
-                )
-            )
+    if (
+        hasattr(m, 'syn1neg')
+        and m.syn1neg is not None
+        and m.wv.vector_size != m.syn1neg.shape[1]
+    ):
+        raise ValueError(
+            f'mismatch between vector size in model params ({m.wv.vector_size}) and trainables ({m.wv.vectors_ngrams})'
+        )
 
     if len(m.wv) != m.nwords:
         raise ValueError(
-            'mismatch between final vocab size (%s words), and expected number of words (%s words)' % (
-                len(m.wv), m.nwords,
-            )
+            f'mismatch between final vocab size ({len(m.wv)} words), and expected number of words ({m.nwords} words)'
         )
 
     if len(m.wv) != m.vocab_size:
@@ -998,7 +995,9 @@ class FastTextKeyedVectors(KeyedVectors):
         """Handle special requirements of `.load()` protocol, usually up-converting older versions."""
         super(FastTextKeyedVectors, self)._load_specials(*args, **kwargs)
         if not isinstance(self, FastTextKeyedVectors):
-            raise TypeError("Loaded object of type %s, not expected FastTextKeyedVectors" % type(self))
+            raise TypeError(
+                f"Loaded object of type {type(self)}, not expected FastTextKeyedVectors"
+            )
         if not hasattr(self, 'compatible_hash') or self.compatible_hash is False:
             raise TypeError(
                 "Pre-gensim-3.8.x fastText models with nonstandard hashing are no longer compatible. "
@@ -1266,18 +1265,9 @@ def _unpack(m, num_rows, hash2index, seed=1, fill=None):
     else:
         m = np.concatenate([m, [fill] * (num_rows - orig_rows)])
 
-    #
-    # Swap rows to transform hash2index into the identify function.
-    # There are two kinds of swaps.
-    # First, rearrange the rows that belong entirely within the original matrix dimensions.
-    # Second, swap out rows from the original matrix dimensions, replacing them with
-    # randomly initialized values.
-    #
-    # N.B. We only do the swap in one direction, because doing it in both directions
-    # nullifies the effect.
-    #
-    swap = {h: i for (h, i) in hash2index.items() if h < i < orig_rows}
-    swap.update({h: i for (h, i) in hash2index.items() if h >= orig_rows})
+    swap = {h: i for (h, i) in hash2index.items() if h < i < orig_rows} | {
+        h: i for (h, i) in hash2index.items() if h >= orig_rows
+    }
     for h, i in swap.items():
         assert h != i
         m[[h, i]] = m[[i, h]]  # swap rows i and h
@@ -1317,8 +1307,7 @@ def ft_ngram_hashes(word, minn, maxn, num_buckets):
 
     """
     encoded_ngrams = compute_ngrams_bytes(word, minn, maxn)
-    hashes = [ft_hash_bytes(n) % num_buckets for n in encoded_ngrams]
-    return hashes
+    return [ft_hash_bytes(n) % num_buckets for n in encoded_ngrams]
 
 
 # BACKWARD COMPATIBILITY FOR OLDER PICKLES

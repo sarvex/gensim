@@ -42,6 +42,6 @@ def test_notebooks():
     for notebook in glob("*.ipynb"):
         if " " in notebook:
             continue
-        print("Testing {}".format(notebook))
+        print(f"Testing {notebook}")
         nb, errors = _notebook_run(notebook)
         assert errors == []

@@ -120,10 +120,7 @@ def construct_doc2author(corpus, author2doc):
     """
     doc2author = {}
     for d, _ in enumerate(corpus):
-        author_ids = []
-        for a, a_doc_ids in author2doc.items():
-            if d in a_doc_ids:
-                author_ids.append(a)
+        author_ids = [a for a, a_doc_ids in author2doc.items() if d in a_doc_ids]
         doc2author[d] = author_ids
     return doc2author
 
@@ -287,10 +284,10 @@ class AuthorTopicModel(LdaModel):
                 "If serialized corpora are used, a the path to a folder "
                 "where the corpus should be saved must be provided (serialized_path)."
             )
-        if serialized and serialization_path:
+        if serialized:
             assert not isfile(serialization_path), \
-                "A file already exists at the serialization_path path; " \
-                "choose a different serialization_path, or delete the file."
+                    "A file already exists at the serialization_path path; " \
+                    "choose a different serialization_path, or delete the file."
         self.serialization_path = serialization_path
 
         # Initialize an empty self.corpus.
@@ -298,12 +295,17 @@ class AuthorTopicModel(LdaModel):
 
         self.alpha, self.optimize_alpha = self.init_dir_prior(alpha, 'alpha')
         assert self.alpha.shape == (self.num_topics,), \
-            "Invalid alpha shape. Got shape %s, but expected (%d, )" % (str(self.alpha.shape), self.num_topics)
+                "Invalid alpha shape. Got shape %s, but expected (%d, )" % (str(self.alpha.shape), self.num_topics)
 
         self.eta, self.optimize_eta = self.init_dir_prior(eta, 'eta')
-        assert (self.eta.shape == (self.num_terms,) or self.eta.shape == (self.num_topics, self.num_terms)), (
-            "Invalid eta shape. Got shape %s, but expected (%d, 1) or (%d, %d)" %
-            (str(self.eta.shape), self.num_terms, self.num_topics, self.num_terms)
+        assert self.eta.shape in [
+            (self.num_terms,),
+            (self.num_topics, self.num_terms),
+        ], "Invalid eta shape. Got shape %s, but expected (%d, 1) or (%d, %d)" % (
+            str(self.eta.shape),
+            self.num_terms,
+            self.num_topics,
+            self.num_terms,
         )
 
         self.random_state = utils.get_random_state(random_state)
@@ -331,8 +333,7 @@ class AuthorTopicModel(LdaModel):
             String representation of current instance.
 
         """
-        return "AuthorTopicModel(num_terms=%s, num_topics=%s, num_authors=%s, decay=%s, chunksize=%s)" % \
-            (self.num_terms, self.num_topics, self.num_authors, self.decay, self.chunksize)
+        return f"AuthorTopicModel(num_terms={self.num_terms}, num_topics={self.num_topics}, num_authors={self.num_authors}, decay={self.decay}, chunksize={self.chunksize})"
 
     def init_empty_corpus(self):
         """Initialize an empty corpus.
@@ -371,15 +372,15 @@ class AuthorTopicModel(LdaModel):
             if isinstance(corpus, MmCorpus):
                 # Check that we are not attempting to overwrite the serialized corpus.
                 assert self.corpus.input != corpus.input, \
-                    'Input corpus cannot have the same file path as the model corpus (serialization_path).'
+                        'Input corpus cannot have the same file path as the model corpus (serialization_path).'
             corpus_chain = chain(self.corpus, corpus)  # A generator with the old and new documents.
             # Make a temporary copy of the file where the corpus is serialized.
-            copyfile(self.serialization_path, self.serialization_path + '.tmp')
-            self.corpus.input = self.serialization_path + '.tmp'  # Point the old corpus at this temporary file.
+            copyfile(self.serialization_path, f'{self.serialization_path}.tmp')
+            self.corpus.input = f'{self.serialization_path}.tmp'
             # Re-serialize the old corpus, and extend it with the new corpus.
             MmCorpus.serialize(self.serialization_path, corpus_chain)
             self.corpus = MmCorpus(self.serialization_path)  # Store the new serialized corpus object in self.corpus.
-            remove(self.serialization_path + '.tmp')  # Remove the temporary file again.
+            remove(f'{self.serialization_path}.tmp')
         else:
             # self.corpus and corpus are just lists, just extend the list.
             # First check that corpus is actually a list.
@@ -403,9 +404,7 @@ class AuthorTopicModel(LdaModel):
 
         """
         expElogtheta_sum = expElogthetad.sum(axis=0)
-        phinorm = expElogtheta_sum.dot(expElogbetad) + 1e-100
-
-        return phinorm
+        return expElogtheta_sum.dot(expElogbetad) + 1e-100
 
     def inference(self, chunk, author2doc, doc2author, rhot, collect_sstats=False, chunk_doc_idx=None):
         """Give a `chunk` of sparse document vectors, update gamma for each author corresponding to the `chuck`.
@@ -453,10 +452,7 @@ class AuthorTopicModel(LdaModel):
             logger.debug("performing inference on a chunk of %i documents", len(chunk))
 
         # Initialize the variational distribution q(theta|gamma) for the chunk
-        if collect_sstats:
-            sstats = np.zeros_like(self.expElogbeta)
-        else:
-            sstats = None
+        sstats = np.zeros_like(self.expElogbeta) if collect_sstats else None
         converged = 0
 
         # Stack all the computed gammas into this output array.
@@ -464,10 +460,7 @@ class AuthorTopicModel(LdaModel):
 
         # Now, for each document d update gamma and phi w.r.t. all authors in those documents.
         for d, doc in enumerate(chunk):
-            if chunk_doc_idx is not None:
-                doc_no = chunk_doc_idx[d]
-            else:
-                doc_no = d
+            doc_no = chunk_doc_idx[d] if chunk_doc_idx is not None else d
             # Get the IDs and counts of all the words in the current document.
             # TODO: this is duplication of code in LdaModel. Refactor.
             if doc and not isinstance(doc[0][0], (int, np.integer,)):
@@ -715,7 +708,7 @@ class AuthorTopicModel(LdaModel):
             # Just keep training on the already available data.
             # Assumes self.update() has been called before with input documents and corresponding authors.
             assert self.total_docs > 0, 'update() was called with no documents to train on.'
-            train_corpus_idx = [d for d in range(self.total_docs)]
+            train_corpus_idx = list(range(self.total_docs))
             num_input_authors = len(self.author2doc)
         else:
             if doc2author is None and author2doc is None:
@@ -987,10 +980,7 @@ class AuthorTopicModel(LdaModel):
         word_score = 0.0
         theta_score = 0.0
         for d, doc in enumerate(chunk):
-            if chunk_doc_idx:
-                doc_no = chunk_doc_idx[d]
-            else:
-                doc_no = d
+            doc_no = chunk_doc_idx[d] if chunk_doc_idx else d
             # Get all authors in current document, and convert the author names to integer IDs.
             authors_d = np.fromiter((self.author2id[a] for a in self.doc2author[doc_no]), dtype=int)
             ids = np.fromiter((id for id, _ in doc), dtype=int, count=len(doc))  # Word IDs in doc.
@@ -1026,9 +1016,7 @@ class AuthorTopicModel(LdaModel):
         sum_eta = np.sum(self.eta)
         beta_score += np.sum(gammaln(sum_eta) - gammaln(np.sum(_lambda, 1)))
 
-        total_score = word_score + theta_score + beta_score
-
-        return total_score
+        return word_score + theta_score + beta_score
 
     def get_document_topics(self, word_id, minimum_probability=None):
         """Override :meth:`~gensim.models.ldamodel.LdaModel.get_document_topics` and simply raises an exception.
@@ -1072,7 +1060,7 @@ class AuthorTopicModel(LdaModel):
             return pow(self.offset + 1 + 1, -self.decay)
 
         def rollback_new_author_chages():
-            self.state.gamma = self.state.gamma[0:-1]
+            self.state.gamma = self.state.gamma[:-1]
 
             del self.author2doc[new_author_name]
             a_id = self.author2id[new_author_name]
@@ -1173,12 +1161,11 @@ class AuthorTopicModel(LdaModel):
 
         topic_dist = self.state.gamma[author_id, :] / sum(self.state.gamma[author_id, :])
 
-        author_topics = [
-            (topicid, topicvalue) for topicid, topicvalue in enumerate(topic_dist)
+        return [
+            (topicid, topicvalue)
+            for topicid, topicvalue in enumerate(topic_dist)
             if topicvalue >= minimum_probability
         ]
-
-        return author_topics
 
     def __getitem__(self, author_names, eps=None):
         """Get topic distribution for input `author_names`.
@@ -1197,11 +1184,11 @@ class AuthorTopicModel(LdaModel):
             Topic distribution for the author(s), type depends on type of `author_names`.
 
         """
-        if isinstance(author_names, list):
-            items = []
-            for a in author_names:
-                items.append(self.get_author_topics(a, minimum_probability=eps))
-        else:
-            items = self.get_author_topics(author_names, minimum_probability=eps)
-
-        return items
+        return (
+            [
+                self.get_author_topics(a, minimum_probability=eps)
+                for a in author_names
+            ]
+            if isinstance(author_names, list)
+            else self.get_author_topics(author_names, minimum_probability=eps)
+        )

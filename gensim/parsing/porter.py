@@ -77,9 +77,7 @@ class PorterStemmer:
         ch = self.b[i]
         if ch in "aeiou":
             return False
-        if ch == 'y':
-            return i == 0 or not self._cons(i - 1)
-        return True
+        return i == 0 or not self._cons(i - 1) if ch == 'y' else True
 
     def _m(self):
         """Calculate the number of consonant sequences between 0 and j.
@@ -326,7 +324,7 @@ class PorterStemmer:
     def _step1c(self):
         """Turn terminal 'y' to 'i' when there is another vowel in the stem."""
         if self._ends("y") and self._vowelinstem():
-            self.b = self.b[:self.k] + 'i'
+            self.b = f'{self.b[:self.k]}i'
 
     def _step2(self):
         """Map double suffices to single ones.
@@ -349,6 +347,10 @@ class PorterStemmer:
         elif ch == 'e':
             if self._ends("izer"):
                 self._r("ize")
+        elif ch == 'g':
+            if self._ends("logi"):
+                self._r("log")
+
         elif ch == 'l':
             if self._ends("bli"):
                 self._r("ble")  # --DEPARTURE--
@@ -385,9 +387,6 @@ class PorterStemmer:
                 self._r("ive")
             elif self._ends("biliti"):
                 self._r("ble")
-        elif ch == 'g':  # --DEPARTURE--
-            if self._ends("logi"):
-                self._r("log")
         # To match the published algorithm, delete this phrase
 
     def _step3(self):
@@ -437,17 +436,12 @@ class PorterStemmer:
                 pass
             elif self._ends("ment"):
                 pass
-            elif self._ends("ent"):
-                pass
-            else:
+            elif not self._ends("ent"):
                 return
         elif ch == 'o':
             if self._ends("ion") and self.b[self.j] in "st":
                 pass
-            elif self._ends("ou"):
-                pass
-            # takes care of -ous
-            else:
+            elif not self._ends("ou"):
                 return
         elif ch == 's':
             if not self._ends("ism"):

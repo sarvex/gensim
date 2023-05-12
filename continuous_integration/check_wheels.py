@@ -23,7 +23,7 @@ def to_tuple(version):
 
 def main():
     project = sys.argv[1]
-    json = requests.get('https://pypi.org/pypi/%s/json' % project).json()
+    json = requests.get(f'https://pypi.org/pypi/{project}/json').json()
     for version in sorted(json['releases'], key=to_tuple):
         print(version)
         wheel_packages = [

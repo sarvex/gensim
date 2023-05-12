@@ -51,6 +51,7 @@ Example: python -m gensim.scripts.word2vec_standalone -train data.txt \
 """
 
 
+
 import logging
 import os.path
 import sys
@@ -130,11 +131,11 @@ if __name__ == "__main__":
         model.wv.save_word2vec_format(outfile, binary=args.binary)
     else:
         outfile = args.train.split('.')[0]
-        model.save(outfile + '.model')
+        model.save(f'{outfile}.model')
         if args.binary == 1:
-            model.wv.save_word2vec_format(outfile + '.model.bin', binary=True)
+            model.wv.save_word2vec_format(f'{outfile}.model.bin', binary=True)
         else:
-            model.wv.save_word2vec_format(outfile + '.model.txt', binary=False)
+            model.wv.save_word2vec_format(f'{outfile}.model.txt', binary=False)
 
     if args.accuracy:
         questions_file = args.accuracy

@@ -99,14 +99,8 @@ if __name__ == '__main__':
         mm = gensim.corpora.MmCorpus(fname)
 
     # extra cmd parameters = use a subcorpus (fewer docs, smaller vocab)
-    if len(sys.argv) > 2:
-        n = int(sys.argv[2])
-    else:
-        n = mm.num_docs
-    if len(sys.argv) > 3:
-        m = int(sys.argv[3])
-    else:
-        m = mm.num_terms
+    n = int(sys.argv[2]) if len(sys.argv) > 2 else mm.num_docs
+    m = int(sys.argv[3]) if len(sys.argv) > 3 else mm.num_terms
     logging.info("using %i documents and %i features", n, m)
     corpus = ClippedCorpus(mm, n, m)
     id2word = gensim.utils.FakeDict(m)
@@ -126,7 +120,7 @@ if __name__ == '__main__':
     spectrum_s, spectrum_u = scipy.linalg.eigh(aat)
     spectrum_s = spectrum_s[::-1]  # re-order to descending eigenvalue order
     spectrum_u = spectrum_u.T[::-1].T
-    np.save(fname + '.spectrum.npy', spectrum_s)
+    np.save(f'{fname}.spectrum.npy', spectrum_s)
 
     for factors in FACTORS:
         err = -np.dot(spectrum_u[:, :factors], np.dot(np.diag(spectrum_s[:factors]), spectrum_u[:, :factors].T))

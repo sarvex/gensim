@@ -141,7 +141,6 @@ def corpus2csc(corpus, num_terms=None, dtype=np.float64, num_docs=None, num_nnz=
             indptr.append(posnext)
             posnow = posnext
         assert posnow == num_nnz, "mismatch between supplied and computed number of non-zeros"
-        result = scipy.sparse.csc_matrix((data, indices, indptr), shape=(num_terms, num_docs), dtype=dtype)
     else:
         # slower version; determine the sparse matrix parameters during iteration
         num_nnz, data, indices, indptr = 0, [], [], [0]
@@ -161,8 +160,9 @@ def corpus2csc(corpus, num_terms=None, dtype=np.float64, num_docs=None, num_nnz=
         # now num_docs, num_terms and num_nnz contain the correct values
         data = np.asarray(data, dtype=dtype)
         indices = np.asarray(indices)
-        result = scipy.sparse.csc_matrix((data, indices, indptr), shape=(num_terms, num_docs), dtype=dtype)
-    return result
+    return scipy.sparse.csc_matrix(
+        (data, indices, indptr), shape=(num_terms, num_docs), dtype=dtype
+    )
 
 
 def pad(mat, padrow, padcol):
@@ -183,10 +183,8 @@ def pad(mat, padrow, padcol):
         Matrix with needed padding.
 
     """
-    if padrow < 0:
-        padrow = 0
-    if padcol < 0:
-        padcol = 0
+    padrow = max(padrow, 0)
+    padcol = max(padcol, 0)
     rows, cols = mat.shape
     return np.block([
         [mat, np.zeros((rows, padcol))],
@@ -279,7 +277,7 @@ def scipy2scipy_clipped(matrix, topn, eps=1e-9):
 
     """
     if not scipy.sparse.issparse(matrix):
-        raise ValueError("'%s' is not a scipy sparse vector." % matrix)
+        raise ValueError(f"'{matrix}' is not a scipy sparse vector.")
     if topn <= 0:
         return scipy.sparse.csr_matrix([])
     # Return clipped sparse vector if input is a sparse vector.
@@ -534,10 +532,7 @@ class Dense2Corpus:
             Documents in `dense` represented as columns, as opposed to rows?
 
         """
-        if documents_columns:
-            self.dense = dense.T
-        else:
-            self.dense = dense
+        self.dense = dense.T if documents_columns else dense
 
     def __iter__(self):
         """Iterate over the corpus.
@@ -577,10 +572,7 @@ class Sparse2Corpus:
             Documents will be column?
 
         """
-        if documents_columns:
-            self.sparse = sparse.tocsc()
-        else:
-            self.sparse = sparse.tocsr().T  # make sure shape[1]=number of docs (needed in len())
+        self.sparse = sparse.tocsc() if documents_columns else sparse.tocsr().T
 
     def __iter__(self):
         """
@@ -667,18 +659,17 @@ def ret_log_normalize_vec(vec, axis=1):
         tot = np.sum(np.exp(vec + log_shift))
         log_norm = np.log(tot) - log_shift
         vec -= log_norm
+    elif axis == 1:  # independently normalize each sample
+        max_val = np.max(vec, 1)
+        log_shift = log_max - np.log(vec.shape[1] + 1.0) - max_val
+        tot = np.sum(np.exp(vec + log_shift[:, np.newaxis]), 1)
+        log_norm = np.log(tot) - log_shift
+        vec = vec - log_norm[:, np.newaxis]
+    elif axis == 0:  # normalize each feature
+        k = ret_log_normalize_vec(vec.T)
+        return k[0].T, k[1]
     else:
-        if axis == 1:  # independently normalize each sample
-            max_val = np.max(vec, 1)
-            log_shift = log_max - np.log(vec.shape[1] + 1.0) - max_val
-            tot = np.sum(np.exp(vec + log_shift[:, np.newaxis]), 1)
-            log_norm = np.log(tot) - log_shift
-            vec = vec - log_norm[:, np.newaxis]
-        elif axis == 0:  # normalize each feature
-            k = ret_log_normalize_vec(vec.T)
-            return k[0].T, k[1]
-        else:
-            raise ValueError("'%s' is not a supported axis" % axis)
+        raise ValueError(f"'{axis}' is not a supported axis")
     return vec, log_norm
 
 
@@ -712,7 +703,9 @@ def unitvec(vec, norm='l2', return_norm=False):
     """
     supported_norms = ('l1', 'l2', 'unique')
     if norm not in supported_norms:
-        raise ValueError("'%s' is not a supported norm. Currently supported norms are %s." % (norm, supported_norms))
+        raise ValueError(
+            f"'{norm}' is not a supported norm. Currently supported norms are {supported_norms}."
+        )
 
     if scipy.sparse.issparse(vec):
         vec = vec.tocsr()
@@ -722,65 +715,46 @@ def unitvec(vec, norm='l2', return_norm=False):
             veclen = np.sqrt(np.sum(vec.data ** 2))
         if norm == 'unique':
             veclen = vec.nnz
-        if veclen > 0.0:
-            if np.issubdtype(vec.dtype, np.integer):
-                vec = vec.astype(float)
-            vec /= veclen
-            if return_norm:
-                return vec, veclen
-            else:
-                return vec
-        else:
-            if return_norm:
-                return vec, 1.0
-            else:
-                return vec
-
+        if veclen <= 0.0:
+            return (vec, 1.0) if return_norm else vec
+        if np.issubdtype(vec.dtype, np.integer):
+            vec = vec.astype(float)
+        vec /= veclen
+        return (vec, veclen) if return_norm else vec
     if isinstance(vec, np.ndarray):
         if norm == 'l1':
             veclen = np.sum(np.abs(vec))
         if norm == 'l2':
-            if vec.size == 0:
-                veclen = 0.0
-            else:
-                veclen = blas_nrm2(vec)
+            veclen = 0.0 if vec.size == 0 else blas_nrm2(vec)
         if norm == 'unique':
             veclen = np.count_nonzero(vec)
-        if veclen > 0.0:
-            if np.issubdtype(vec.dtype, np.integer):
-                vec = vec.astype(float)
-            if return_norm:
-                return blas_scal(1.0 / veclen, vec).astype(vec.dtype), veclen
-            else:
-                return blas_scal(1.0 / veclen, vec).astype(vec.dtype)
-        else:
-            if return_norm:
-                return vec, 1.0
-            else:
-                return vec
-
+        if veclen <= 0.0:
+            return (vec, 1.0) if return_norm else vec
+        if np.issubdtype(vec.dtype, np.integer):
+            vec = vec.astype(float)
+        return (
+            (blas_scal(1.0 / veclen, vec).astype(vec.dtype), veclen)
+            if return_norm
+            else blas_scal(1.0 / veclen, vec).astype(vec.dtype)
+        )
     try:
         first = next(iter(vec))  # is there at least one element?
     except StopIteration:
-        if return_norm:
-            return vec, 1.0
-        else:
-            return vec
-
-    if isinstance(first, (tuple, list)) and len(first) == 2:  # gensim sparse format
-        if norm == 'l1':
-            length = float(sum(abs(val) for _, val in vec))
-        if norm == 'l2':
-            length = 1.0 * math.sqrt(sum(val ** 2 for _, val in vec))
-        if norm == 'unique':
-            length = 1.0 * len(vec)
-        assert length > 0.0, "sparse documents must not contain any explicit zero entries"
-        if return_norm:
-            return ret_normalized_vec(vec, length), length
-        else:
-            return ret_normalized_vec(vec, length)
-    else:
+        return (vec, 1.0) if return_norm else vec
+    if not isinstance(first, (tuple, list)) or len(first) != 2:
         raise ValueError("unknown input type")
+    if norm == 'l1':
+        length = float(sum(abs(val) for _, val in vec))
+    if norm == 'l2':
+        length = 1.0 * math.sqrt(sum(val ** 2 for _, val in vec))
+    if norm == 'unique':
+        length = 1.0 * len(vec)
+    assert length > 0.0, "sparse documents must not contain any explicit zero entries"
+    return (
+        (ret_normalized_vec(vec, length), length)
+        if return_norm
+        else ret_normalized_vec(vec, length)
+    )
 
 
 def cossim(vec1, vec2):
@@ -849,12 +823,11 @@ def _convert_vec(vec1, vec2, num_features=None):
         if num_features is not None:  # if not None, make as large as the documents drawing from
             dense1 = sparse2full(vec1, num_features)
             dense2 = sparse2full(vec2, num_features)
-            return dense1, dense2
         else:
             max_len = max(len(vec1), len(vec2))
             dense1 = sparse2full(vec1, max_len)
             dense2 = sparse2full(vec2, max_len)
-            return dense1, dense2
+        return dense1, dense2
     else:
         # this conversion is made because if it is not in bow format, it might be a list within a list after conversion
         # the scipy implementation of Kullback fails in such a case so we pick up only the nested list.
@@ -940,13 +913,16 @@ def hellinger(vec1, vec2):
         # if it is a BoW format, instead of converting to dense we use dictionaries to calculate appropriate distance
         vec1, vec2 = dict(vec1), dict(vec2)
         indices = set(list(vec1.keys()) + list(vec2.keys()))
-        sim = np.sqrt(
-            0.5 * sum((np.sqrt(vec1.get(index, 0.0)) - np.sqrt(vec2.get(index, 0.0)))**2 for index in indices)
+        return np.sqrt(
+            0.5
+            * sum(
+                (np.sqrt(vec1.get(index, 0.0)) - np.sqrt(vec2.get(index, 0.0)))
+                ** 2
+                for index in indices
+            )
         )
-        return sim
     else:
-        sim = np.sqrt(0.5 * ((np.sqrt(vec1) - np.sqrt(vec2))**2).sum())
-        return sim
+        return np.sqrt(0.5 * ((np.sqrt(vec1) - np.sqrt(vec2))**2).sum())
 
 
 def jaccard(vec1, vec2):
@@ -1306,7 +1282,7 @@ class MmWriter:
             _num_terms = max(_num_terms, 1 + max_id)
             num_nnz += veclen
         if metadata:
-            utils.pickle(docno2metadata, fname + '.metadata.cpickle')
+            utils.pickle(docno2metadata, f'{fname}.metadata.cpickle')
             corpus.metadata = orig_metadata
 
         num_docs = docno + 1

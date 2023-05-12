@@ -69,8 +69,7 @@ class IndexedCorpus(interfaces.CorpusABC):
         self.length = None
 
     @classmethod
-    def serialize(serializer, fname, corpus, id2word=None, index_fname=None,
-                  progress_cnt=None, labels=None, metadata=False):
+    def serialize(cls, fname, corpus, id2word=None, index_fname=None, progress_cnt=None, labels=None, metadata=False):
         """Serialize corpus with offset metadata, allows to use direct indexes after loading.
 
         Parameters
@@ -107,7 +106,9 @@ class IndexedCorpus(interfaces.CorpusABC):
 
         """
         if getattr(corpus, 'fname', None) == fname:
-            raise ValueError("identical input vs. output corpus filename, refusing to serialize: %s" % fname)
+            raise ValueError(
+                f"identical input vs. output corpus filename, refusing to serialize: {fname}"
+            )
 
         if index_fname is None:
             index_fname = utils.smart_extension(fname, '.index')
@@ -119,11 +120,11 @@ class IndexedCorpus(interfaces.CorpusABC):
         if labels is not None:
             kwargs['labels'] = labels
 
-        offsets = serializer.save_corpus(fname, corpus, id2word, **kwargs)
+        offsets = cls.save_corpus(fname, corpus, id2word, **kwargs)
 
         if offsets is None:
             raise NotImplementedError(
-                "Called serialize on class %s which doesn't support indexing!" % serializer.__name__
+                f"Called serialize on class {cls.__name__} which doesn't support indexing!"
             )
 
         # store offsets persistently, using pickle
@@ -131,7 +132,7 @@ class IndexedCorpus(interfaces.CorpusABC):
         # the offsets that are actually stored on disk - we're not storing self.index in any case, the
         # load just needs to turn whatever is loaded from disk back into a ndarray - this should also ensure
         # backwards compatibility
-        logger.info("saving %s index to %s", serializer.__name__, index_fname)
+        logger.info("saving %s index to %s", cls.__name__, index_fname)
         utils.pickle(offsets, index_fname)
 
     def __len__(self):

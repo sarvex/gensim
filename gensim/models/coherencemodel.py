@@ -378,14 +378,12 @@ class CoherenceModel(interfaces.TransformationABC):
         current_topic_length = len(self._topics[0])
         requires_expansion = current_topic_length < topn
 
-        if self.model is not None:
-            self._topn = topn
-            if requires_expansion:
+        if requires_expansion:
+            if self.model is not None:
                 self.model = self._model  # trigger topic expansion from model
-        else:
-            if requires_expansion:
+            else:
                 raise ValueError("Model unavailable and topic sizes are less than topn=%d" % topn)
-            self._topn = topn  # topics will be truncated in getter
+        self._topn = topn
 
     @property
     def measure(self):

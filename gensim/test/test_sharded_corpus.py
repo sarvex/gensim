@@ -38,11 +38,10 @@ class TestShardedCorpus(unittest.TestCase):
     def setUp(self):
         self.dim = 1000
         self.random_string = ''.join(random.choice('1234567890') for _ in range(8))
-        self.tmp_dir = 'test-temp-' + self.random_string
+        self.tmp_dir = f'test-temp-{self.random_string}'
         os.makedirs(self.tmp_dir)
 
-        self.tmp_fname = os.path.join(self.tmp_dir,
-                                      'shcorp.' + self.random_string + '.tmp')
+        self.tmp_fname = os.path.join(self.tmp_dir, f'shcorp.{self.random_string}.tmp')
         self.data = mock_data(dim=1000)
         self.corpus = ShardedCorpus(self.tmp_fname, self.data, dim=self.dim,
                                     shardsize=100)
@@ -54,12 +53,12 @@ class TestShardedCorpus(unittest.TestCase):
     def test_init(self):
 
         # Test that the shards were actually created during setUp
-        self.assertTrue(os.path.isfile(self.tmp_fname + '.1'))
+        self.assertTrue(os.path.isfile(f'{self.tmp_fname}.1'))
 
     def test_load(self):
 
         # Test that the shards were actually created
-        self.assertTrue(os.path.isfile(self.tmp_fname + '.1'))
+        self.assertTrue(os.path.isfile(f'{self.tmp_fname}.1'))
 
         self.corpus.save()
         loaded_corpus = ShardedCorpus.load(self.tmp_fname)
@@ -136,7 +135,7 @@ class TestShardedCorpus(unittest.TestCase):
 
     def test_getitem_sparse2sparse(self):
 
-        sp_tmp_fname = self.tmp_fname + '.sparse'
+        sp_tmp_fname = f'{self.tmp_fname}.sparse'
         corpus = ShardedCorpus(
             sp_tmp_fname, self.data, shardsize=100, dim=self.dim,
             sparse_serialization=True, sparse_retrieval=True
@@ -168,7 +167,7 @@ class TestShardedCorpus(unittest.TestCase):
         self.assertEqual((ilist != dslice).getnnz(), 0)
 
     def test_getitem_sparse2dense(self):
-        sp_tmp_fname = self.tmp_fname + '.sparse'
+        sp_tmp_fname = f'{self.tmp_fname}.sparse'
         corpus = ShardedCorpus(
             sp_tmp_fname, self.data, shardsize=100, dim=self.dim,
             sparse_serialization=True, sparse_retrieval=False
@@ -260,7 +259,7 @@ class TestShardedCorpus(unittest.TestCase):
             yield [(0, 1)]
             yield [(1, 1)]
 
-        gen_tmp_fname = self.tmp_fname + '.generator'
+        gen_tmp_fname = f'{self.tmp_fname}.generator'
         corpus = ShardedCorpus(gen_tmp_fname, data_generator(), dim=2)
 
         self.assertEqual(2, len(corpus))

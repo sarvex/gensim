@@ -103,7 +103,7 @@ class AnnoyIndexer():
         """
         self.index.save(fname)
         d = {'f': self.model.vector_size, 'num_trees': self.num_trees, 'labels': self.labels}
-        with utils.open(fname + '.dict', 'wb') as fout:
+        with utils.open(f'{fname}.dict', 'wb') as fout:
             _pickle.dump(d, fout, protocol=protocol)
 
     def load(self, fname):
@@ -134,7 +134,7 @@ class AnnoyIndexer():
             >>> new_indexer.model = model
 
         """
-        fname_dict = fname + '.dict'
+        fname_dict = f'{fname}.dict'
         if not (os.path.exists(fname) and os.path.exists(fname_dict)):
             raise IOError(
                 f"Can't find index files '{fname}' and '{fname_dict}' - unable to restore AnnoyIndexer state."

@@ -73,26 +73,33 @@ def resolve_weights(smartirs):
     if isinstance(smartirs, str) and re.match(r"...\....", smartirs):
         match = re.match(r"(?P<ddd>...)\.(?P<qqq>...)", smartirs)
         raise ValueError(
-            "The notation {ddd}.{qqq} specifies two term-weighting schemes, "
-            "one for collection documents ({ddd}) and one for queries ({qqq}). "
-            "You must train two separate tf-idf models.".format(
-                ddd=match.group("ddd"),
-                qqq=match.group("qqq"),
+            (
+                "The notation {ddd}.{qqq} specifies two term-weighting schemes, "
+                "one for collection documents ({ddd}) and one for queries ({qqq}). "
+                "You must train two separate tf-idf models.".format(
+                    ddd=match["ddd"], qqq=match["qqq"]
+                )
             )
         )
     if not isinstance(smartirs, str) or len(smartirs) != 3:
-        raise ValueError("Expected a string of length 3 got " + smartirs)
+        raise ValueError(f"Expected a string of length 3 got {smartirs}")
 
     w_tf, w_df, w_n = smartirs
 
     if w_tf not in 'btnaldL':
-        raise ValueError("Expected term frequency weight to be one of 'btnaldL', got {}".format(w_tf))
+        raise ValueError(
+            f"Expected term frequency weight to be one of 'btnaldL', got {w_tf}"
+        )
 
     if w_df not in 'xnftp':
-        raise ValueError("Expected inverse document frequency weight to be one of 'xnftp', got {}".format(w_df))
+        raise ValueError(
+            f"Expected inverse document frequency weight to be one of 'xnftp', got {w_df}"
+        )
 
     if w_n not in 'xncub':
-        raise ValueError("Expected normalization weight to be one of 'xncub', got {}".format(w_n))
+        raise ValueError(
+            f"Expected normalization weight to be one of 'xncub', got {w_n}"
+        )
 
     # resolve aliases
     if w_tf == "t":
@@ -232,11 +239,10 @@ def smartirs_normalize(x, norm_scheme, return_norm=False):
         Norm of `x`.
     """
     if norm_scheme == "n":
-        if return_norm:
-            _, length = matutils.unitvec(x, return_norm=return_norm)
-            return x, length
-        else:
+        if not return_norm:
             return x
+        _, length = matutils.unitvec(x, return_norm=return_norm)
+        return x, length
     elif norm_scheme == "c":
         return matutils.unitvec(x, return_norm=return_norm)
 
@@ -390,11 +396,6 @@ class TfidfModel(interfaces.TransformationABC):
                 self.id2word = dictionary
         elif corpus:
             self.initialize(corpus)
-        else:
-            # NOTE: everything is left uninitialized; presumably the model will
-            # be initialized in some other way
-            pass
-
         # If smartirs is not None, override pivot and normalize
         if not smartirs:
             return
@@ -435,7 +436,7 @@ class TfidfModel(interfaces.TransformationABC):
         return model
 
     def __str__(self):
-        return "TfidfModel(num_docs=%s, num_nnz=%s)" % (self.num_docs, self.num_nnz)
+        return f"TfidfModel(num_docs={self.num_docs}, num_nnz={self.num_nnz})"
 
     def initialize(self, corpus):
         """Compute inverse document weights, which will be used to modify term frequencies for documents.
